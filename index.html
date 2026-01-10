@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Check-in / Check-out - Hôtel</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1220">
+  <style>
+    body{font-family:system-ui,Arial;margin:0;background:#0b1220;color:#fff}
+    .wrap{max-width:820px;margin:0 auto;padding:16px}
+    .card{background:#111a33;border:1px solid #223056;border-radius:14px;padding:14px;margin:12px 0}
+    label{display:block;margin:10px 0 6px;font-weight:600}
+    input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3a66;background:#0c1430;color:#fff}
+    textarea{min-height:90px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{padding:12px 14px;border-radius:12px;border:1px solid #2a3a66;background:#1a2a55;color:#fff;font-weight:700}
+    .btn:active{transform:scale(.99)}
+    .pill{display:inline-flex;gap:8px;align-items:center}
+    .status{display:flex;gap:10px;align-items:center}
+    .status button{flex:1}
+    .ok{background:#154c2f}
+    .no{background:#5a1e1e}
+    .muted{opacity:.85;font-size:.95rem}
+    .gridPoints{display:grid;gap:10px}
+    .point{border:1px solid #2a3a66;border-radius:12px;padding:12px;background:#0c1430}
+    .pointTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .small{font-size:.9rem;opacity:.9}
+    img.preview{width:100%;border-radius:12px;margin-top:10px;border:1px solid #2a3a66}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 style="margin:8px 0 0">Fiche Chambre (Tablette / Smartphone)</h2>
+    <div class="muted">✅ / ❌ + Photo envoyée dans Google Drive + Journal central + Email admin</div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Type</label>
+          <select id="type">
+            <option value="check-in">Check-in</option>
+            <option value="check-out">Check-out</option>
+          </select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="date" type="datetime-local">
+        </div>
+      </div>
+
+      <label>Hôtel</label>
+      <input id="hotel" placeholder="Ex: Hôtel & Restaurant …">
+
+      <div class="row">
+        <div>
+          <label>Chambre</label>
+          <input id="chambre" placeholder="Ex: 203">
+        </div>
+        <div>
+          <label>Agent</label>
+          <input id="agent" placeholder="Nom de l’agent">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px">10 points (ultra-rapide)</h3>
+      <div id="points" class="gridPoints"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px">Photo / preuve</h3>
+      <div class="muted">Prends une photo (ou choisis depuis la galerie). Elle sera envoyée dans Google Drive.</div>
+      <input id="photo" type="file" accept="image/*" capture="environment">
+      <img id="preview" class="preview" style="display:none" alt="Aperçu">
+    </div>
+
+    <div class="card">
+      <label>Observations générales</label>
+      <textarea id="notes" placeholder="Détails importants…"></textarea>
+
+      <button class="btn" id="send">Envoyer au compte admin</button>
+      <div id="result" class="muted" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+<script>
+  // 👉 Mets ici l’URL de ton Web App (Apps Script)
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz6pZ0n1bAK_exqBEb4zKZvIt_OBAIWXMLRDhxporqCI2VuWzP_KHQRXGdLJ9eH6O2scg/exec";
+  const PIN = "101210"; // doit correspondre au script
+
+  const pointsCheckin = [
+    "Propreté générale (sol / surfaces)",
+    "Odeur agréable (pas d’humidité)",
+    "Literie propre + lit fait",
+    "Serviettes + papier toilette présents",
+    "Douche / lavabo / WC propres",
+    "Eau chaude OK",
+    "Climatisation OK",
+    "TV + télécommande OK",
+    "Lumières + prises OK",
+    "Porte / serrure + fenêtres sécurisées"
+  ];
+
+  const pointsCheckout = [
+    "Propreté générale (pas de déchets)",
+    "Dégâts visibles (murs / sol / vitres)",
+    "Literie / linge récupérés",
+    "Serviettes récupérées",
+    "Salle de bain (aucune casse / fuite)",
+    "TV présente + fonctionne",
+    "Télécommande présente",
+    "Climatisation OK",
+    "Mini-bar / consommations vérifiés",
+    "Objets manquants ? (si oui noter)"
+  ];
+
+  const elType = document.getElementById('type');
+  const elPoints = document.getElementById('points');
+  const elDate = document.getElementById('date');
+  const elPhoto = document.getElementById('photo');
+  const elPreview = document.getElementById('preview');
+  const elResult = document.getElementById('result');
+
+  function nowLocal() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+  }
+  elDate.value = nowLocal();
+
+  function renderPoints() {
+    const list = elType.value === "check-in" ? pointsCheckin : pointsCheckout;
+    elPoints.innerHTML = "";
+    list.forEach((label, idx) => {
+      const div = document.createElement('div');
+      div.className = "point";
+      div.innerHTML = `
+        <div class="pointTop">
+          <div><b>${idx+1}. ${label}</b></div>
+          <div class="pill small" id="s_${idx}">—</div>
+        </div>
+        <div class="status" style="margin-top:10px">
+          <button class="btn ok" data-idx="${idx}" data-val="✅">✅ OK</button>
+          <button class="btn no" data-idx="${idx}" data-val="❌">❌ NOK</button>
+        </div>
+        <label class="small" style="margin-top:10px">Remarque (optionnel)</label>
+        <input id="r_${idx}" placeholder="Ex: ampoule grillée, fuite, etc.">
+      `;
+      elPoints.appendChild(div);
+    });
+
+    elPoints.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = btn.dataset.idx;
+        const v = btn.dataset.val;
+        document.getElementById(`s_${i}`).textContent = v;
+        document.getElementById(`s_${i}`).dataset.status = v;
+      });
+    });
+  }
+
+  elType.addEventListener('change', renderPoints);
+  renderPoints();
+
+  // Photo preview + base64
+  let photoBase64 = "";
+  elPhoto.addEventListener('change', async () => {
+    const f = elPhoto.files?.[0];
+    if (!f) return;
+    const b64 = await fileToDataURL(f);
+    photoBase64 = b64;
+    elPreview.src = b64;
+    elPreview.style.display = "block";
+  });
+
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  document.getElementById('send').addEventListener('click', async () => {
+    elResult.textContent = "Envoi…";
+
+    const hotel = document.getElementById('hotel').value.trim();
+    const chambre = document.getElementById('chambre').value.trim();
+    const agent = document.getElementById('agent').value.trim();
+    const date = document.getElementById('date').value;
+
+    if (!hotel || !chambre || !agent) {
+      elResult.textContent = "⚠️ Remplis Hôtel, Chambre et Agent.";
+      return;
+    }
+
+    // Collect points
+    const list = elType.value === "check-in" ? pointsCheckin : pointsCheckout;
+    const points = list.map((label, idx) => {
+      const statusEl = document.getElementById(`s_${idx}`);
+      const status = statusEl.dataset.status || "";
+      const remarque = (document.getElementById(`r_${idx}`).value || "").trim();
+      return { label, status, remarque };
+    });
+
+    const payload = {
+      pin: PIN,
+      type: elType.value,
+      hotel, chambre, agent, date,
+      points,
+      notes: (document.getElementById('notes').value || "").trim(),
+      photoBase64
+    };
+
+    try {
+      const res = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Erreur inconnue");
+      elResult.textContent = `✅ Envoyé. Photo: ${json.photoUrl || "aucune"}`;
+      // Reset photo
+      // elPhoto.value = ""; photoBase64 = ""; elPreview.style.display="none";
+    } catch (err) {
+      elResult.textContent = `❌ Échec: ${err.message}. (Vérifie l’URL du script et le PIN)`;
+    }
+  });
+
+  // PWA service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+</body>
+</html>
