@@ -3,36 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Check-in / Check-out - Hôtel</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Fiche Check-in / Check-Out</title>
   <meta name="theme-color" content="#0b1220">
   <style>
     body{font-family:system-ui,Arial;margin:0;background:#0b1220;color:#fff}
     .wrap{max-width:820px;margin:0 auto;padding:16px}
+    h1{font-size:22px;margin:10px 0 2px}
     .card{background:#111a33;border:1px solid #223056;border-radius:14px;padding:14px;margin:12px 0}
-    label{display:block;margin:10px 0 6px;font-weight:600}
+    label{display:block;margin:10px 0 6px;font-weight:700}
     input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3a66;background:#0c1430;color:#fff}
     textarea{min-height:90px}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .btn{padding:12px 14px;border-radius:12px;border:1px solid #2a3a66;background:#1a2a55;color:#fff;font-weight:700}
+    .btn{padding:12px 14px;border-radius:12px;border:1px solid #2a3a66;background:#1a2a55;color:#fff;font-weight:800}
     .btn:active{transform:scale(.99)}
-    .pill{display:inline-flex;gap:8px;align-items:center}
-    .status{display:flex;gap:10px;align-items:center}
-    .status button{flex:1}
-    .ok{background:#154c2f}
-    .no{background:#5a1e1e}
     .muted{opacity:.85;font-size:.95rem}
     .gridPoints{display:grid;gap:10px}
     .point{border:1px solid #2a3a66;border-radius:12px;padding:12px;background:#0c1430}
     .pointTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
     .small{font-size:.9rem;opacity:.9}
+    .status{display:flex;gap:10px;align-items:center;margin-top:10px}
+    .status button{flex:1}
+    .ok{background:#154c2f}
+    .no{background:#5a1e1e}
     img.preview{width:100%;border-radius:12px;margin-top:10px;border:1px solid #2a3a66}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#0c1430;border:1px solid #2a3a66}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h2 style="margin:8px 0 0">Fiche Chambre (Tablette / Smartphone)</h2>
-    <div class="muted">✅ / ❌ + Photo envoyée dans Google Drive + Journal central + Email admin</div>
+    <h1>Fiche Check-in / Check-Out</h1>
+    <div class="muted">
+      Hôtel: <span class="badge" id="hotelName"></span>
+    </div>
 
     <div class="card">
       <div class="row">
@@ -49,13 +51,10 @@
         </div>
       </div>
 
-      <label>Hôtel</label>
-      <input id="hotel" placeholder="Ex: Hôtel & Restaurant …">
-
       <div class="row">
         <div>
           <label>Chambre</label>
-          <input id="chambre" placeholder="Ex: 203">
+          <input id="chambre" inputmode="numeric" placeholder="Ex: 203">
         </div>
         <div>
           <label>Agent</label>
@@ -70,8 +69,8 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 8px">Photo / preuve</h3>
-      <div class="muted">Prends une photo (ou choisis depuis la galerie). Elle sera envoyée dans Google Drive.</div>
+      <h3 style="margin:0 0 8px">Photo / preuve (optionnel)</h3>
+      <div class="muted">Prends une photo ou choisis dans la galerie (envoyée au Drive admin).</div>
       <input id="photo" type="file" accept="image/*" capture="environment">
       <img id="preview" class="preview" style="display:none" alt="Aperçu">
     </div>
@@ -86,9 +85,15 @@
   </div>
 
 <script>
-  // 👉 Mets ici l’URL de ton Web App (Apps Script)
+  // ✅ Ton Web App URL
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7ofKyewtV2CzdbZt3ia0Lf7WGsBt6DIz4mKJ_Nn2zpaHkxQYUkQg/exec";
-  const PIN = "101210"; // doit correspondre au script
+
+  // ✅ PIN simple (NE JAMAIS mettre le mot de passe Google)
+  const PIN = "101210!";
+
+  // ✅ Hôtel auto (affichage). Le backend forcera aussi ce nom.
+  const HOTEL_NAME = "Habitation des Lauriers";
+  document.getElementById("hotelName").textContent = HOTEL_NAME;
 
   const pointsCheckin = [
     "Propreté générale (sol / surfaces)",
@@ -139,13 +144,13 @@
       div.innerHTML = `
         <div class="pointTop">
           <div><b>${idx+1}. ${label}</b></div>
-          <div class="pill small" id="s_${idx}">—</div>
+          <div class="badge" id="s_${idx}">—</div>
         </div>
-        <div class="status" style="margin-top:10px">
+        <div class="status">
           <button class="btn ok" data-idx="${idx}" data-val="✅">✅ OK</button>
           <button class="btn no" data-idx="${idx}" data-val="❌">❌ NOK</button>
         </div>
-        <label class="small" style="margin-top:10px">Remarque (optionnel)</label>
+        <label class="small">Remarque (optionnel)</label>
         <input id="r_${idx}" placeholder="Ex: ampoule grillée, fuite, etc.">
       `;
       elPoints.appendChild(div);
@@ -155,8 +160,9 @@
       btn.addEventListener('click', () => {
         const i = btn.dataset.idx;
         const v = btn.dataset.val;
-        document.getElementById(`s_${i}`).textContent = v;
-        document.getElementById(`s_${i}`).dataset.status = v;
+        const statusEl = document.getElementById(`s_${i}`);
+        statusEl.textContent = v;
+        statusEl.dataset.status = v;
       });
     });
   }
@@ -164,7 +170,7 @@
   elType.addEventListener('change', renderPoints);
   renderPoints();
 
-  // Photo preview + base64
+  // Photo base64
   let photoBase64 = "";
   elPhoto.addEventListener('change', async () => {
     const f = elPhoto.files?.[0];
@@ -187,17 +193,15 @@
   document.getElementById('send').addEventListener('click', async () => {
     elResult.textContent = "Envoi…";
 
-    const hotel = document.getElementById('hotel').value.trim();
     const chambre = document.getElementById('chambre').value.trim();
     const agent = document.getElementById('agent').value.trim();
     const date = document.getElementById('date').value;
 
-    if (!hotel || !chambre || !agent) {
-      elResult.textContent = "⚠️ Remplis Hôtel, Chambre et Agent.";
+    if (!chambre || !agent) {
+      elResult.textContent = "⚠️ Remplis Chambre et Agent.";
       return;
     }
 
-    // Collect points
     const list = elType.value === "check-in" ? pointsCheckin : pointsCheckout;
     const points = list.map((label, idx) => {
       const statusEl = document.getElementById(`s_${idx}`);
@@ -209,38 +213,33 @@
     const payload = {
       pin: PIN,
       type: elType.value,
-      hotel, chambre, agent, date,
+      hotel: HOTEL_NAME, // affichage, le backend forcera aussi
+      chambre,
+      agent,
+      date,
       points,
       notes: (document.getElementById('notes').value || "").trim(),
       photoBase64
     };
 
     try {
+      // ✅ IMPORTANT: text/plain évite le pré-vol CORS sur Apps Script
       const res = await fetch(WEB_APP_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
       });
+
       const json = await res.json();
+
       if (!json.ok) throw new Error(json.error || "Erreur inconnue");
-      elResult.textContent = `✅ Envoyé. Photo: ${json.photoUrl || "aucune"}`;
-      // Reset photo
-      // elPhoto.value = ""; photoBase64 = ""; elPreview.style.display="none";
+
+      elResult.textContent = `✅ Envoyé. ${json.photoUrl ? "Photo OK." : "Sans photo."}`;
+
     } catch (err) {
-      elResult.textContent = `❌ Échec: ${err.message}. (Vérifie l’URL du script et le PIN)`;
+      elResult.textContent = `❌ Échec: ${err.message}`;
     }
   });
-
-  // PWA service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
 </script>
 </body>
 </html>
-
-
-
-
-
-
