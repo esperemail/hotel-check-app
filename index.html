@@ -87,7 +87,7 @@
 
 <script>
   // 👉 Mets ici l’URL de ton Web App (Apps Script)
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz6pZ0n1bAK_exqBEb4zKZvIt_OBAIWXMLRDhxporqCI2VuWzP_KHQRXGdLJ9eH6O2scg/exec";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwSSDjwhUJr9iFg39eHa9nDstBxYbFw3WdssH7MI_RNUB6s6zt6PFNkmdQQuoir6nnAIA/exec";
   const PIN = "101210"; // doit correspondre au script
 
   const pointsCheckin = [
@@ -218,7 +218,7 @@
     try {
       const res = await fetch(WEB_APP_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
       });
       const json = await res.json();
