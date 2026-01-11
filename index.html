@@ -13,9 +13,7 @@
     label{display:block;margin:10px 0 6px;font-weight:800}
     input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3a66;background:#0c1430;color:#fff}
     textarea{min-height:90px}
-
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
     .gridPoints{display:grid;gap:10px}
     .point{border:1px solid #2a3a66;border-radius:12px;padding:12px;background:#0c1430}
     .pointTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -27,11 +25,7 @@
     .small{font-size:.9rem;opacity:.9}
 
     .floating-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:#0b1220;border-top:1px solid #223056;padding:12px;}
-    .floating-btn{
-      width:100%;padding:16px;border-radius:14px;border:none;
-      background:#2563eb;color:#fff;font-size:18px;font-weight:900;
-      transition:opacity .15s ease, filter .15s ease;
-    }
+    .floating-btn{width:100%;padding:16px;border-radius:14px;border:none;background:#2563eb;color:#fff;font-size:18px;font-weight:900;transition:opacity .15s ease, filter .15s ease;}
     .floating-btn:active{transform:scale(.98)}
     .floating-btn:disabled{opacity:.45;filter:grayscale(1);}
 
@@ -122,8 +116,15 @@ const COMPRESS_MAX_H = 1600;
 const COMPRESS_QUALITY = 0.72;
 const COMPRESS_MIME = "image/jpeg";
 
-/* ✅ Point spécial : si ✅ (oui) alors remarque obligatoire */
-const SPECIAL_POINT_YES_REMARK_REQUIRED = "Effet(s) oublié(s) par le Client";
+/**
+ * ✅ Points spéciaux (CHECK-OUT) :
+ * - remarque obligatoire si ✅
+ * - remarque optionnelle si ❌
+ */
+const YES_REMARK_REQUIRED_POINTS = new Set([
+  "Effet(s) oublié(s) par le Client",
+  "Objets manquants"
+]);
 
 /* ================= POINTS ================= */
 const pointsCheckin = [
@@ -144,7 +145,6 @@ const pointsCheckin = [
 ];
 
 // ✅ "Dégâts visibles" supprimé
-// ✅ Ajout du point spécial (check-out)
 const pointsCheckout = [
   "Propreté générale",
   "Literie récupérée",
@@ -181,6 +181,11 @@ document.getElementById("date").value = nowLocal();
 
 function currentPointsList(){
   return elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+}
+
+function isYesRemarkRequiredPoint_(label){
+  // seulement en check-out
+  return (elType.value === "check-out") && YES_REMARK_REQUIRED_POINTS.has(label);
 }
 
 /* ================= RENDER POINTS ================= */
@@ -231,11 +236,12 @@ function renderPoints(){
 }
 
 /**
- * Règle remarque :
- * - Par défaut : NOK (❌) => remarque obligatoire
- * - Exception : "Effet(s) oublié(s) par le Client"
- *   - ✅ (oui) => remarque obligatoire
- *   - ❌ (non) => remarque optionnelle
+ * Règles remarque :
+ * - Général : si ❌ => remarque obligatoire
+ * - Exception (en check-out) pour:
+ *   - "Objets manquants"
+ *   - "Effet(s) oublié(s) par le Client"
+ *   => remarque obligatoire si ✅ (et optionnelle si ❌)
  */
 function applyRemarkRule_(i){
   const list = currentPointsList();
@@ -250,11 +256,9 @@ function applyRemarkRule_(i){
   const remarkText = input.value.trim();
   let required = false;
 
-  if (pointLabel === SPECIAL_POINT_YES_REMARK_REQUIRED) {
-    // ✅ = oui => remarque obligatoire ; ❌ = non => optionnelle
+  if (isYesRemarkRequiredPoint_(pointLabel)) {
     required = (status === "✅");
   } else {
-    // règle générale : NOK => remarque obligatoire
     required = (status === "❌");
   }
 
@@ -370,13 +374,11 @@ function remarkRulesSatisfied(){
     const status = document.getElementById(`s_${i}`)?.dataset.status || "";
     const remark = document.getElementById(`r_${i}`)?.value.trim() || "";
 
-    // Règle spéciale
-    if (label === SPECIAL_POINT_YES_REMARK_REQUIRED) {
-      if (status === "✅" && !remark) return false; // oui => remarque obligatoire
+    if (isYesRemarkRequiredPoint_(label)) {
+      if (status === "✅" && !remark) return false;
       continue;
     }
 
-    // Règle générale : NOK => remarque obligatoire
     if (status === "❌" && !remark) return false;
   }
   return true;
