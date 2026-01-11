@@ -206,15 +206,16 @@ textarea{min-height:90px}
   </div>
 
   <div class="card">
-    <h3>Point de vérification</h3>
+    <h3 style="margin:0 0 8px">Point de vérification</h3>
     <div id="points" class="gridPoints"></div>
   </div>
 
   <div class="card">
-    <h3>Photos / preuve (optionnel)</h3>
+    <h3 style="margin:0 0 8px">Photos / preuve (optionnel)</h3>
+    <div class="hint">Tu peux sélectionner <b>plusieurs photos</b>. Elles seront compressées automatiquement.</div>
     <input id="photos" type="file" accept="image/*" multiple>
     <div id="thumbs" class="thumbs" style="display:none"></div>
-    <div id="photoInfo" class="hint"></div>
+    <div id="photoInfo" class="hint" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -230,10 +231,25 @@ textarea{min-height:90px}
 
 <script>
 /* ================= CONFIG ================= */
-const WEB_APP_URL = "TON_URL_APPS_SCRIPT";
+const WEB_APP_URL = "TON_URL_APPS_SCRIPT"; // ✅ mets ici ton /exec
 const PIN = "101210!";
 
-/* Points */
+/* Compression */
+const COMPRESS_MAX_W = 1600;
+const COMPRESS_MAX_H = 1600;
+const COMPRESS_QUALITY = 0.72;
+const COMPRESS_MIME = "image/jpeg";
+
+/**
+ * ✅ CHECK-OUT points spéciaux :
+ * remarque obligatoire si ✅, optionnelle si ❌
+ */
+const YES_REMARK_REQUIRED_POINTS = new Set([
+  "Objets manquants",
+  "Effet(s) oublié(s) par le Client"
+]);
+
+/* ================= POINTS ================= */
 const pointsCheckin = [
   "Propreté générale (sol / surfaces)",
   "Odeur agréable",
@@ -267,9 +283,321 @@ const pointsCheckout = [
   "Effet(s) oublié(s) par le Client"
 ];
 
-/* ⚠️ Le JS métier complet (gestion des règles, compression, envoi)
-   reste IDENTIQUE à ta version fonctionnelle actuelle.
-   👉 Tu peux le garder tel quel sans modification. */
+/* ================= UI ================= */
+const elType = document.getElementById("type");
+const elPoints = document.getElementById("points");
+const elResult = document.getElementById("result");
+const elSend = document.getElementById("send");
+const elChambre = document.getElementById("chambre");
+const elAgent = document.getElementById("agent");
+const elPhotos = document.getElementById("photos");
+const elThumbs = document.getElementById("thumbs");
+const elPhotoInfo = document.getElementById("photoInfo");
+
+function nowLocal(){
+  const d=new Date();
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+document.getElementById("date").value = nowLocal();
+
+function currentPointsList(){
+  return elType.value === "check-in" ? pointsCheckin : pointsCheckout;
+}
+function isYesRemarkRequiredPoint_(label){
+  return (elType.value === "check-out") && YES_REMARK_REQUIRED_POINTS.has(label);
+}
+
+/* ================= RENDER POINTS ================= */
+function renderPoints(){
+  const list = currentPointsList();
+  elPoints.innerHTML = "";
+
+  list.forEach((label,i)=>{
+    const div = document.createElement("div");
+    div.className = "point";
+    div.innerHTML = `
+      <div class="pointTop">
+        <b>${i+1}. ${label}</b>
+        <span class="badge" id="s_${i}">❓</span>
+      </div>
+
+      <div class="status">
+        <button class="ok" type="button" data-i="${i}" data-v="✅">✅ OK</button>
+        <button class="no" type="button" data-i="${i}" data-v="❌">❌ NOK</button>
+      </div>
+
+      <label class="small" id="rl_${i}">Remarque</label>
+      <input id="r_${i}" placeholder="Remarque">
+    `;
+    elPoints.appendChild(div);
+  });
+
+  // Boutons OK/NOK
+  elPoints.querySelectorAll(".status button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const i = Number(btn.dataset.i);
+      const v = btn.dataset.v;
+      const badge = document.getElementById(`s_${i}`);
+      badge.textContent = v;
+      badge.dataset.status = v;
+
+      applyRemarkRule_(i);
+      updateSendState();
+    });
+  });
+
+  // Inputs remarques
+  elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
+    inp.addEventListener("input", ()=>{
+      const i = Number(inp.id.split("_")[1]);
+      applyRemarkRule_(i);
+      updateSendState();
+    });
+  });
+
+  for (let i=0;i<list.length;i++) applyRemarkRule_(i);
+  updateSendState();
+}
+
+/**
+ * Règles remarque :
+ * - Général : ❌ => remarque obligatoire
+ * - CHECK-OUT exceptions :
+ *   - "Objets manquants" & "Effet(s) oublié(s)..." => ✅ => remarque obligatoire, ❌ => optionnelle
+ */
+function applyRemarkRule_(i){
+  const list = currentPointsList();
+  const labelPoint = list[i];
+
+  const badge = document.getElementById(`s_${i}`);
+  const status = badge?.dataset.status || "";
+  const input = document.getElementById(`r_${i}`);
+  const label = document.getElementById(`rl_${i}`);
+  if(!input || !label) return;
+
+  const remarkText = input.value.trim();
+  let required = false;
+
+  if (isYesRemarkRequiredPoint_(labelPoint)) {
+    required = (status === "✅");
+  } else {
+    required = (status === "❌");
+  }
+
+  if (required) {
+    const hasText = remarkText.length > 0;
+    label.classList.add("remark-label-required");
+    label.textContent = hasText ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
+    if (!hasText) input.classList.add("remark-required");
+    else input.classList.remove("remark-required");
+  } else {
+    label.classList.remove("remark-label-required");
+    label.textContent = "Remarque";
+    input.classList.remove("remark-required");
+  }
+}
+
+elType.addEventListener("change", renderPoints);
+renderPoints();
+
+/* ================= MULTI PHOTOS (compressées) ================= */
+let photosBase64 = [];
+
+elPhotos.addEventListener("change", async () => {
+  photosBase64 = [];
+  elThumbs.innerHTML = "";
+  elPhotoInfo.textContent = "";
+
+  const files = Array.from(elPhotos.files || []);
+  if(!files.length){
+    elThumbs.style.display = "none";
+    updateSendState();
+    return;
+  }
+
+  elPhotoInfo.textContent = "Compression des photos…";
+  let totalOrig = 0;
+  let totalComp = 0;
+
+  for(const f of files){
+    totalOrig += f.size;
+    const compressed = await compressImageFileToDataURL(f, COMPRESS_MAX_W, COMPRESS_MAX_H, COMPRESS_QUALITY);
+    photosBase64.push(compressed);
+
+    const approxBytes = Math.round((compressed.length * 3) / 4);
+    totalComp += approxBytes;
+
+    const img = document.createElement("img");
+    img.src = compressed;
+    elThumbs.appendChild(img);
+  }
+
+  elThumbs.style.display = "grid";
+  elPhotoInfo.textContent =
+    `Photos: ${files.length} | Taille approx avant: ${formatBytes(totalOrig)} | après: ${formatBytes(totalComp)}.`;
+
+  updateSendState();
+});
+
+function formatBytes(bytes){
+  if(bytes < 1024) return bytes + " B";
+  const kb = bytes / 1024;
+  if(kb < 1024) return kb.toFixed(1) + " KB";
+  const mb = kb / 1024;
+  return mb.toFixed(2) + " MB";
+}
+
+function compressImageFileToDataURL(file, maxW, maxH, quality){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const ratio = Math.min(maxW / w, maxH / h, 1);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
+      URL.revokeObjectURL(url);
+      resolve(dataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Impossible de lire l’image"));
+    };
+
+    img.src = url;
+  });
+}
+
+/* ================= VALIDATION (bouton grisé) ================= */
+function allPointsChecked(){
+  const list = currentPointsList();
+  for(let i=0;i<list.length;i++){
+    const status = document.getElementById(`s_${i}`)?.dataset.status;
+    if(!status) return false;
+  }
+  return true;
+}
+
+function remarkRulesSatisfied(){
+  const list = currentPointsList();
+  for(let i=0;i<list.length;i++){
+    const label = list[i];
+    const status = document.getElementById(`s_${i}`)?.dataset.status || "";
+    const remark = document.getElementById(`r_${i}`)?.value.trim() || "";
+
+    if (isYesRemarkRequiredPoint_(label)) {
+      if (status === "✅" && !remark) return false;
+      continue;
+    }
+
+    if (status === "❌" && !remark) return false;
+  }
+  return true;
+}
+
+function updateSendState(){
+  const chambreOk = elChambre.value.trim().length > 0;
+  const agentOk = elAgent.value.trim().length > 0;
+  const pointsOk = allPointsChecked();
+  const remarksOk = remarkRulesSatisfied();
+  elSend.disabled = !(chambreOk && agentOk && pointsOk && remarksOk);
+}
+
+elChambre.addEventListener("input", updateSendState);
+elAgent.addEventListener("input", updateSendState);
+
+/* ================= ENVOI ================= */
+elSend.addEventListener("click", async () => {
+  elResult.innerHTML = "";
+
+  const chambre = elChambre.value.trim();
+  const agent = elAgent.value.trim();
+  const date = document.getElementById("date").value;
+
+  if(!chambre || !agent){
+    elResult.innerHTML = `<div class="error">Chambre et Nom Employé obligatoires</div>`;
+    return;
+  }
+  if(!allPointsChecked()){
+    elResult.innerHTML = `<div class="error">Tous les points doivent être cochés</div>`;
+    return;
+  }
+  if(!remarkRulesSatisfied()){
+    elResult.innerHTML = `<div class="error">Certaines remarques obligatoires manquent</div>`;
+    return;
+  }
+
+  const list = currentPointsList();
+  const points = [];
+  for(let i=0;i<list.length;i++){
+    points.push({
+      label: list[i],
+      status: document.getElementById(`s_${i}`).dataset.status,
+      remarque: document.getElementById(`r_${i}`).value.trim()
+    });
+  }
+
+  elSend.disabled = true;
+  elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
+
+  const payload = {
+    pin: PIN,
+    type: elType.value,
+    chambre,
+    agent,
+    date,
+    points,
+    notes: document.getElementById("notes").value.trim(),
+    photosBase64
+  };
+
+  try{
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: {"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || "Erreur inconnue");
+
+    elResult.innerHTML = `<div class="success">✅ Envoyé (${json.photoCount || 0} photo(s))</div>`;
+
+    // Reset : garde agent
+    const keepAgent = agent;
+    elChambre.value = "";
+    document.getElementById("notes").value = "";
+    document.getElementById("type").value = "check-in";
+    document.getElementById("date").value = nowLocal();
+
+    renderPoints();
+
+    elPhotos.value = "";
+    photosBase64 = [];
+    elThumbs.innerHTML = "";
+    elThumbs.style.display = "none";
+    elPhotoInfo.textContent = "";
+
+    elAgent.value = keepAgent;
+    elChambre.focus();
+    updateSendState();
+
+  } catch(e){
+    elResult.innerHTML = `<div class="error">❌ ${e.message}</div>`;
+    updateSendState();
+  }
+});
 </script>
 </body>
 </html>
