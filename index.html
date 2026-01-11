@@ -42,7 +42,6 @@
     .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .thumbs img{width:100%;border-radius:10px;border:1px solid #2a3a66;object-fit:cover;aspect-ratio:1/1}
 
-    /* Remarque obligatoire quand NOK */
     .remark-required{
       border-color:#ff4d4d !important;
       box-shadow:0 0 0 2px rgba(255,77,77,.25);
@@ -123,6 +122,9 @@ const COMPRESS_MAX_H = 1600;
 const COMPRESS_QUALITY = 0.72;
 const COMPRESS_MIME = "image/jpeg";
 
+/* ✅ Point spécial : si ✅ (oui) alors remarque obligatoire */
+const SPECIAL_POINT_YES_REMARK_REQUIRED = "Effet(s) oublié(s) par le Client";
+
 /* ================= POINTS ================= */
 const pointsCheckin = [
   "Propreté générale (sol / surfaces)",
@@ -141,7 +143,8 @@ const pointsCheckin = [
   "Porte / fenêtres sécurisées"
 ];
 
-// ✅ "Dégâts visibles" SUPPRIMÉ
+// ✅ "Dégâts visibles" supprimé
+// ✅ Ajout du point spécial (check-out)
 const pointsCheckout = [
   "Propreté générale",
   "Literie récupérée",
@@ -154,7 +157,8 @@ const pointsCheckout = [
   "Lampe de chevet",
   "Ventilateurs sur pied",
   "Meubles en bon état",
-  "Objets manquants"
+  "Objets manquants",
+  "Effet(s) oublié(s) par le Client"
 ];
 
 /* ================= UI ================= */
@@ -175,9 +179,13 @@ function nowLocal(){
 }
 document.getElementById("date").value = nowLocal();
 
+function currentPointsList(){
+  return elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+}
+
 /* ================= RENDER POINTS ================= */
 function renderPoints(){
-  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  const list = currentPointsList();
   elPoints.innerHTML="";
   list.forEach((label,i)=>{
     const div=document.createElement("div");
@@ -192,7 +200,7 @@ function renderPoints(){
         <button class="no" type="button" data-i="${i}" data-v="❌">❌ NOK</button>
       </div>
       <label class="small" id="rl_${i}">Remarque</label>
-      <input id="r_${i}" placeholder="Si NOK, remarque obligatoire">
+      <input id="r_${i}" placeholder="Remarque">
     `;
     elPoints.appendChild(div);
   });
@@ -222,15 +230,36 @@ function renderPoints(){
   updateSendState();
 }
 
+/**
+ * Règle remarque :
+ * - Par défaut : NOK (❌) => remarque obligatoire
+ * - Exception : "Effet(s) oublié(s) par le Client"
+ *   - ✅ (oui) => remarque obligatoire
+ *   - ❌ (non) => remarque optionnelle
+ */
 function applyRemarkRule_(i){
+  const list = currentPointsList();
+  const pointLabel = list[i];
+
   const badge = document.getElementById(`s_${i}`);
   const status = badge?.dataset.status || "";
   const input = document.getElementById(`r_${i}`);
   const label = document.getElementById(`rl_${i}`);
   if (!input || !label) return;
 
-  if (status === "❌") {
-    const hasText = input.value.trim().length > 0;
+  const remarkText = input.value.trim();
+  let required = false;
+
+  if (pointLabel === SPECIAL_POINT_YES_REMARK_REQUIRED) {
+    // ✅ = oui => remarque obligatoire ; ❌ = non => optionnelle
+    required = (status === "✅");
+  } else {
+    // règle générale : NOK => remarque obligatoire
+    required = (status === "❌");
+  }
+
+  if (required) {
+    const hasText = remarkText.length > 0;
     label.classList.add("remark-label-required");
     label.textContent = hasText ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
     if (!hasText) input.classList.add("remark-required");
@@ -326,30 +355,39 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
 
 /* ================= VALIDATION (bouton grisé) ================= */
 function allPointsChecked(){
-  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  const list = currentPointsList();
   for (let i=0;i<list.length;i++){
     const status = document.getElementById(`s_${i}`)?.dataset.status;
     if (!status) return false;
   }
   return true;
 }
-function allNokHaveRemark(){
-  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+
+function remarkRulesSatisfied(){
+  const list = currentPointsList();
   for (let i=0;i<list.length;i++){
-    const status = document.getElementById(`s_${i}`)?.dataset.status;
-    if (status === "❌") {
-      const r = document.getElementById(`r_${i}`)?.value.trim() || "";
-      if (!r) return false;
+    const label = list[i];
+    const status = document.getElementById(`s_${i}`)?.dataset.status || "";
+    const remark = document.getElementById(`r_${i}`)?.value.trim() || "";
+
+    // Règle spéciale
+    if (label === SPECIAL_POINT_YES_REMARK_REQUIRED) {
+      if (status === "✅" && !remark) return false; // oui => remarque obligatoire
+      continue;
     }
+
+    // Règle générale : NOK => remarque obligatoire
+    if (status === "❌" && !remark) return false;
   }
   return true;
 }
+
 function updateSendState(){
   const chambreOk = elChambre.value.trim().length > 0;
   const agentOk = elAgent.value.trim().length > 0;
   const pointsOk = allPointsChecked();
-  const nokRemarkOk = allNokHaveRemark();
-  elSend.disabled = !(chambreOk && agentOk && pointsOk && nokRemarkOk);
+  const remarksOk = remarkRulesSatisfied();
+  elSend.disabled = !(chambreOk && agentOk && pointsOk && remarksOk);
 }
 
 elChambre.addEventListener("input", updateSendState);
@@ -371,12 +409,12 @@ elSend.addEventListener("click", async () => {
     elResult.innerHTML = `<div class="error">Tous les points doivent être cochés</div>`;
     return;
   }
-  if(!allNokHaveRemark()){
-    elResult.innerHTML = `<div class="error">Toute réponse ❌ doit avoir une remarque</div>`;
+  if(!remarkRulesSatisfied()){
+    elResult.innerHTML = `<div class="error">Certaines remarques obligatoires manquent</div>`;
     return;
   }
 
-  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  const list = currentPointsList();
   const points = [];
   for(let i=0;i<list.length;i++){
     points.push({
@@ -413,7 +451,6 @@ elSend.addEventListener("click", async () => {
 
     elResult.innerHTML = `<div class="success">✅ Envoyé (${json.photoCount || 0} photo(s))</div>`;
 
-    // RESET (garder agent)
     const keepAgent = agent;
 
     elChambre.value = "";
