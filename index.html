@@ -6,10 +6,7 @@
   <title>Fiche Check-in / Check-Out</title>
   <meta name="theme-color" content="#0b1220">
   <style>
-    body{
-      font-family:system-ui,Arial;margin:0;background:#0b1220;color:#fff;
-      padding-bottom:95px;
-    }
+    body{font-family:system-ui,Arial;margin:0;background:#0b1220;color:#fff;padding-bottom:95px;}
     .wrap{max-width:820px;margin:0 auto;padding:16px}
     h1{font-size:22px;margin:10px 0 2px}
     .card{background:#111a33;border:1px solid #223056;border-radius:14px;padding:14px;margin:12px 0}
@@ -29,20 +26,14 @@
     .no{background:#7a2a2a}
     .small{font-size:.9rem;opacity:.9}
 
-    .floating-bar{
-      position:fixed;bottom:0;left:0;right:0;z-index:999;
-      background:#0b1220;border-top:1px solid #223056;padding:12px;
-    }
+    .floating-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:#0b1220;border-top:1px solid #223056;padding:12px;}
     .floating-btn{
       width:100%;padding:16px;border-radius:14px;border:none;
       background:#2563eb;color:#fff;font-size:18px;font-weight:900;
       transition:opacity .15s ease, filter .15s ease;
     }
     .floating-btn:active{transform:scale(.98)}
-    .floating-btn:disabled{
-      opacity:.45;
-      filter:grayscale(1);
-    }
+    .floating-btn:disabled{opacity:.45;filter:grayscale(1);}
 
     .error{color:#ff6b6b;font-weight:800;margin-top:8px}
     .success{color:#6bff9c;font-weight:800;margin-top:8px}
@@ -50,6 +41,17 @@
 
     .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .thumbs img{width:100%;border-radius:10px;border:1px solid #2a3a66;object-fit:cover;aspect-ratio:1/1}
+
+    /* 🔴 Remarque obligatoire quand NOK */
+    .remark-required{
+      border-color:#ff4d4d !important;
+      box-shadow:0 0 0 2px rgba(255,77,77,.25);
+      background:rgba(255,77,77,.08) !important;
+    }
+    .remark-label-required{
+      color:#ff6b6b;
+      font-weight:900;
+    }
   </style>
 </head>
 
@@ -115,11 +117,11 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7o
 const PIN = "101210!";
 const HOTEL_NAME = "Habitation des Lauriers";
 
-/* Compression (bon équilibre qualité/poids) */
-const COMPRESS_MAX_W = 1600;     // largeur max
-const COMPRESS_MAX_H = 1600;     // hauteur max
-const COMPRESS_QUALITY = 0.72;   // 0.6-0.8 recommandé
-const COMPRESS_MIME = "image/jpeg"; // convertit tout en jpg (plus léger)
+/* Compression */
+const COMPRESS_MAX_W = 1600;
+const COMPRESS_MAX_H = 1600;
+const COMPRESS_QUALITY = 0.72;
+const COMPRESS_MIME = "image/jpeg";
 
 /* ================= POINTS ================= */
 const pointsCheckin = [
@@ -189,39 +191,69 @@ function renderPoints(){
         <button class="ok" type="button" data-i="${i}" data-v="✅">✅ OK</button>
         <button class="no" type="button" data-i="${i}" data-v="❌">❌ NOK</button>
       </div>
-      <label class="small">Remarque</label>
-      <input id="r_${i}">
+      <label class="small" id="rl_${i}">Remarque</label>
+      <input id="r_${i}" placeholder="Si NOK, remarque obligatoire">
     `;
     elPoints.appendChild(div);
   });
 
-  // Bind clicks (sans inline onclick)
+  // Click handlers
   elPoints.querySelectorAll(".status button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const i = btn.dataset.i;
       const v = btn.dataset.v;
-      const b = document.getElementById(`s_${i}`);
-      b.textContent = v;
-      b.dataset.status = v;
+      const badge = document.getElementById(`s_${i}`);
+      badge.textContent = v;
+      badge.dataset.status = v;
+
+      applyRemarkRule_(Number(i));
       updateSendState();
     });
   });
 
-  // Si l’utilisateur tape une remarque, on n’oblige pas, mais on update l’état (optionnel)
+  // Input handlers
   elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
-    inp.addEventListener("input", updateSendState);
+    inp.addEventListener("input", ()=>{
+      const i = Number(inp.id.split("_")[1]);
+      applyRemarkRule_(i);
+      updateSendState();
+    });
   });
 
+  // Init rule state
+  for (let i=0;i<list.length;i++) applyRemarkRule_(i);
   updateSendState();
 }
 
-elType.addEventListener("change", ()=>{
-  renderPoints();
-});
+function applyRemarkRule_(i){
+  const badge = document.getElementById(`s_${i}`);
+  const status = badge?.dataset.status || "";
+  const input = document.getElementById(`r_${i}`);
+  const label = document.getElementById(`rl_${i}`);
+
+  if (!input || !label) return;
+
+  // Si NOK -> remarque obligatoire + rouge si vide
+  if (status === "❌") {
+    const hasText = input.value.trim().length > 0;
+
+    label.classList.add("remark-label-required");
+    label.textContent = hasText ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
+    if (!hasText) input.classList.add("remark-required");
+    else input.classList.remove("remark-required");
+  } else {
+    // OK ou non choisi -> remarque optionnelle
+    label.classList.remove("remark-label-required");
+    label.textContent = "Remarque";
+    input.classList.remove("remark-required");
+  }
+}
+
+elType.addEventListener("change", renderPoints);
 renderPoints();
 
 /* ================= MULTI PHOTOS (compressées) ================= */
-let photosBase64 = []; // compressées (data URL JPEG)
+let photosBase64 = [];
 
 elPhotos.addEventListener("change", async () => {
   photosBase64 = [];
@@ -246,11 +278,9 @@ elPhotos.addEventListener("change", async () => {
     const compressedDataUrl = await compressImageFileToDataURL(f, COMPRESS_MAX_W, COMPRESS_MAX_H, COMPRESS_QUALITY);
     photosBase64.push(compressedDataUrl);
 
-    // Estimer taille compressée (approx via base64 length)
-    const approxBytes = Math.round((compressedDataUrl.length * 3) / 4); // approximation
+    const approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
     totalComp += approxBytes;
 
-    // Thumbs
     const img = document.createElement("img");
     img.src = compressedDataUrl;
     elThumbs.appendChild(img);
@@ -277,9 +307,7 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
     const url = URL.createObjectURL(file);
 
     img.onload = () => {
-      let { width:w, height:h } = img;
-
-      // resize proportionnel
+      let w = img.width, h = img.height;
       const ratio = Math.min(maxW / w, maxH / h, 1);
       w = Math.round(w * ratio);
       h = Math.round(h * ratio);
@@ -288,10 +316,8 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-
       ctx.drawImage(img, 0, 0, w, h);
 
-      // export jpeg compressé
       const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
 
       URL.revokeObjectURL(url);
@@ -317,13 +343,25 @@ function allPointsChecked(){
   return true;
 }
 
+function allNokHaveRemark(){
+  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  for (let i=0;i<list.length;i++){
+    const status = document.getElementById(`s_${i}`)?.dataset.status;
+    if (status === "❌") {
+      const r = document.getElementById(`r_${i}`)?.value.trim() || "";
+      if (!r) return false;
+    }
+  }
+  return true;
+}
+
 function updateSendState(){
   const chambreOk = elChambre.value.trim().length > 0;
   const agentOk = elAgent.value.trim().length > 0;
   const pointsOk = allPointsChecked();
-  const canSend = chambreOk && agentOk && pointsOk;
+  const nokRemarkOk = allNokHaveRemark();
 
-  elSend.disabled = !canSend;
+  elSend.disabled = !(chambreOk && agentOk && pointsOk && nokRemarkOk);
 }
 
 elChambre.addEventListener("input", updateSendState);
@@ -337,29 +375,28 @@ elSend.addEventListener("click", async () => {
   const agent = elAgent.value.trim();
   const date = document.getElementById("date").value;
 
+  // Sécurité (normalement déjà grisé)
   if(!chambre || !agent){
     elResult.innerHTML = `<div class="error">Chambre et Agent obligatoires</div>`;
     return;
   }
+  if(!allPointsChecked()){
+    elResult.innerHTML = `<div class="error">Tous les points doivent être cochés</div>`;
+    return;
+  }
+  if(!allNokHaveRemark()){
+    elResult.innerHTML = `<div class="error">Toute réponse ❌ doit avoir une remarque</div>`;
+    return;
+  }
 
-  // Points obligatoires
   const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
   const points = [];
   for(let i=0;i<list.length;i++){
-    const badge = document.getElementById(`s_${i}`);
-    const status = badge.dataset.status;
-    if(!status){
-      elResult.innerHTML = `<div class="error">❌ Point ${i+1} non vérifié</div>`;
-      return;
-    }
-    points.push({
-      label: list[i],
-      status,
-      remarque: document.getElementById(`r_${i}`).value.trim()
-    });
+    const status = document.getElementById(`s_${i}`).dataset.status;
+    const remarque = document.getElementById(`r_${i}`).value.trim();
+    points.push({ label:list[i], status, remarque });
   }
 
-  // Désactiver pendant l’envoi
   elSend.disabled = true;
   elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
 
@@ -372,7 +409,7 @@ elSend.addEventListener("click", async () => {
     date,
     points,
     notes: document.getElementById("notes").value.trim(),
-    photosBase64 // ✅ déjà compressées
+    photosBase64
   };
 
   try{
@@ -410,7 +447,7 @@ elSend.addEventListener("click", async () => {
 
   } catch(e){
     elResult.innerHTML = `<div class="error">❌ ${e.message}</div>`;
-    updateSendState(); // réactive si tout est OK
+    updateSendState();
   }
 });
 </script>
