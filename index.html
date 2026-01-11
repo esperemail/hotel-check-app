@@ -36,15 +36,20 @@
     .floating-btn{
       width:100%;padding:16px;border-radius:14px;border:none;
       background:#2563eb;color:#fff;font-size:18px;font-weight:900;
+      transition:opacity .15s ease, filter .15s ease;
     }
     .floating-btn:active{transform:scale(.98)}
+    .floating-btn:disabled{
+      opacity:.45;
+      filter:grayscale(1);
+    }
 
     .error{color:#ff6b6b;font-weight:800;margin-top:8px}
     .success{color:#6bff9c;font-weight:800;margin-top:8px}
+    .hint{opacity:.85;font-size:.95rem}
 
     .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .thumbs img{width:100%;border-radius:10px;border:1px solid #2a3a66;object-fit:cover;aspect-ratio:1/1}
-    .hint{opacity:.85;font-size:.95rem}
   </style>
 </head>
 
@@ -87,12 +92,10 @@
 
   <div class="card">
     <h3 style="margin:0 0 8px">Photos / preuve (optionnel)</h3>
-    <div class="hint">Tu peux sélectionner <b>plusieurs photos</b>.</div>
-
-    <!-- multiple photos -->
+    <div class="hint">Tu peux sélectionner <b>plusieurs photos</b>. Elles seront compressées automatiquement.</div>
     <input id="photos" type="file" accept="image/*" multiple>
-
     <div id="thumbs" class="thumbs" style="display:none"></div>
+    <div id="photoInfo" class="hint" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -103,7 +106,7 @@
 </div>
 
 <div class="floating-bar">
-  <button class="floating-btn" id="send">Envoyer</button>
+  <button class="floating-btn" id="send" disabled>Envoyer</button>
 </div>
 
 <script>
@@ -111,6 +114,12 @@
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7ofKyewtV2CzdbZt3ia0Lf7WGsBt6DIz4mKJ_Nn2zpaHkxQYUkQg/exec";
 const PIN = "101210!";
 const HOTEL_NAME = "Habitation des Lauriers";
+
+/* Compression (bon équilibre qualité/poids) */
+const COMPRESS_MAX_W = 1600;     // largeur max
+const COMPRESS_MAX_H = 1600;     // hauteur max
+const COMPRESS_QUALITY = 0.72;   // 0.6-0.8 recommandé
+const COMPRESS_MIME = "image/jpeg"; // convertit tout en jpg (plus léger)
 
 /* ================= POINTS ================= */
 const pointsCheckin = [
@@ -150,6 +159,12 @@ const pointsCheckout = [
 const elType = document.getElementById("type");
 const elPoints = document.getElementById("points");
 const elResult = document.getElementById("result");
+const elSend = document.getElementById("send");
+const elChambre = document.getElementById("chambre");
+const elAgent = document.getElementById("agent");
+const elPhotos = document.getElementById("photos");
+const elThumbs = document.getElementById("thumbs");
+const elPhotoInfo = document.getElementById("photoInfo");
 
 function nowLocal(){
   const d=new Date();
@@ -158,6 +173,7 @@ function nowLocal(){
 }
 document.getElementById("date").value = nowLocal();
 
+/* ================= RENDER POINTS ================= */
 function renderPoints(){
   const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
   elPoints.innerHTML="";
@@ -170,66 +186,155 @@ function renderPoints(){
         <span class="badge" id="s_${i}">❓</span>
       </div>
       <div class="status">
-        <button class="ok" type="button" onclick="setStatus(${i},'✅')">✅ OK</button>
-        <button class="no" type="button" onclick="setStatus(${i},'❌')">❌ NOK</button>
+        <button class="ok" type="button" data-i="${i}" data-v="✅">✅ OK</button>
+        <button class="no" type="button" data-i="${i}" data-v="❌">❌ NOK</button>
       </div>
       <label class="small">Remarque</label>
       <input id="r_${i}">
     `;
     elPoints.appendChild(div);
   });
+
+  // Bind clicks (sans inline onclick)
+  elPoints.querySelectorAll(".status button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const i = btn.dataset.i;
+      const v = btn.dataset.v;
+      const b = document.getElementById(`s_${i}`);
+      b.textContent = v;
+      b.dataset.status = v;
+      updateSendState();
+    });
+  });
+
+  // Si l’utilisateur tape une remarque, on n’oblige pas, mais on update l’état (optionnel)
+  elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
+    inp.addEventListener("input", updateSendState);
+  });
+
+  updateSendState();
 }
-window.setStatus=(i,v)=>{
-  const b=document.getElementById(`s_${i}`);
-  b.textContent=v;
-  b.dataset.status=v;
-};
-elType.addEventListener("change",renderPoints);
+
+elType.addEventListener("change", ()=>{
+  renderPoints();
+});
 renderPoints();
 
-/* ================= MULTI PHOTOS ================= */
-const elPhotos = document.getElementById("photos");
-const elThumbs = document.getElementById("thumbs");
-let photosBase64 = []; // tableau
+/* ================= MULTI PHOTOS (compressées) ================= */
+let photosBase64 = []; // compressées (data URL JPEG)
 
 elPhotos.addEventListener("change", async () => {
   photosBase64 = [];
   elThumbs.innerHTML = "";
+  elPhotoInfo.textContent = "";
 
   const files = Array.from(elPhotos.files || []);
   if (!files.length) {
     elThumbs.style.display = "none";
+    updateSendState();
     return;
   }
 
-  // Aperçu + base64
-  for (const f of files) {
-    const b64 = await fileToDataURL(f);
-    photosBase64.push(b64);
+  elPhotoInfo.textContent = "Compression des photos…";
 
+  let totalOrig = 0;
+  let totalComp = 0;
+
+  for (const f of files) {
+    totalOrig += f.size;
+
+    const compressedDataUrl = await compressImageFileToDataURL(f, COMPRESS_MAX_W, COMPRESS_MAX_H, COMPRESS_QUALITY);
+    photosBase64.push(compressedDataUrl);
+
+    // Estimer taille compressée (approx via base64 length)
+    const approxBytes = Math.round((compressedDataUrl.length * 3) / 4); // approximation
+    totalComp += approxBytes;
+
+    // Thumbs
     const img = document.createElement("img");
-    img.src = b64;
+    img.src = compressedDataUrl;
     elThumbs.appendChild(img);
   }
 
   elThumbs.style.display = "grid";
+  elPhotoInfo.textContent =
+    `Photos: ${files.length} | Taille approx avant: ${formatBytes(totalOrig)} | après: ${formatBytes(totalComp)}.`;
+
+  updateSendState();
 });
 
-function fileToDataURL(file){
-  return new Promise((resolve,reject)=>{
-    const r=new FileReader();
-    r.onload=()=>resolve(r.result);
-    r.onerror=reject;
-    r.readAsDataURL(file);
+function formatBytes(bytes){
+  if (bytes < 1024) return bytes + " B";
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(1) + " KB";
+  const mb = kb / 1024;
+  return mb.toFixed(2) + " MB";
+}
+
+function compressImageFileToDataURL(file, maxW, maxH, quality){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      let { width:w, height:h } = img;
+
+      // resize proportionnel
+      const ratio = Math.min(maxW / w, maxH / h, 1);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // export jpeg compressé
+      const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
+
+      URL.revokeObjectURL(url);
+      resolve(dataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Impossible de lire l’image"));
+    };
+
+    img.src = url;
   });
 }
 
+/* ================= VALIDATION (bouton grisé) ================= */
+function allPointsChecked(){
+  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  for (let i=0;i<list.length;i++){
+    const status = document.getElementById(`s_${i}`)?.dataset.status;
+    if (!status) return false;
+  }
+  return true;
+}
+
+function updateSendState(){
+  const chambreOk = elChambre.value.trim().length > 0;
+  const agentOk = elAgent.value.trim().length > 0;
+  const pointsOk = allPointsChecked();
+  const canSend = chambreOk && agentOk && pointsOk;
+
+  elSend.disabled = !canSend;
+}
+
+elChambre.addEventListener("input", updateSendState);
+elAgent.addEventListener("input", updateSendState);
+
 /* ================= ENVOI ================= */
-document.getElementById("send").onclick = async () => {
+elSend.addEventListener("click", async () => {
   elResult.innerHTML = "";
 
-  const chambre = document.getElementById("chambre").value.trim();
-  const agent = document.getElementById("agent").value.trim();
+  const chambre = elChambre.value.trim();
+  const agent = elAgent.value.trim();
   const date = document.getElementById("date").value;
 
   if(!chambre || !agent){
@@ -240,9 +345,9 @@ document.getElementById("send").onclick = async () => {
   // Points obligatoires
   const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
   const points = [];
-
   for(let i=0;i<list.length;i++){
-    const status = document.getElementById(`s_${i}`).dataset.status;
+    const badge = document.getElementById(`s_${i}`);
+    const status = badge.dataset.status;
     if(!status){
       elResult.innerHTML = `<div class="error">❌ Point ${i+1} non vérifié</div>`;
       return;
@@ -254,6 +359,10 @@ document.getElementById("send").onclick = async () => {
     });
   }
 
+  // Désactiver pendant l’envoi
+  elSend.disabled = true;
+  elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
+
   const payload = {
     pin: PIN,
     type: elType.value,
@@ -263,12 +372,10 @@ document.getElementById("send").onclick = async () => {
     date,
     points,
     notes: document.getElementById("notes").value.trim(),
-    photosBase64 // ✅ tableau de photos
+    photosBase64 // ✅ déjà compressées
   };
 
   try{
-    elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
-
     const res = await fetch(WEB_APP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -282,7 +389,8 @@ document.getElementById("send").onclick = async () => {
 
     // RESET (garder agent)
     const keepAgent = agent;
-    document.getElementById("chambre").value = "";
+
+    elChambre.value = "";
     document.getElementById("notes").value = "";
     document.getElementById("type").value = "check-in";
     document.getElementById("date").value = nowLocal();
@@ -293,14 +401,18 @@ document.getElementById("send").onclick = async () => {
     photosBase64 = [];
     elThumbs.innerHTML = "";
     elThumbs.style.display = "none";
+    elPhotoInfo.textContent = "";
 
-    document.getElementById("agent").value = keepAgent;
-    document.getElementById("chambre").focus();
+    elAgent.value = keepAgent;
+    elChambre.focus();
+
+    updateSendState();
 
   } catch(e){
     elResult.innerHTML = `<div class="error">❌ ${e.message}</div>`;
+    updateSendState(); // réactive si tout est OK
   }
-};
+});
 </script>
 </body>
 </html>
