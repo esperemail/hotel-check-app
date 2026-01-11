@@ -42,7 +42,7 @@
     .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .thumbs img{width:100%;border-radius:10px;border:1px solid #2a3a66;object-fit:cover;aspect-ratio:1/1}
 
-    /* 🔴 Remarque obligatoire quand NOK */
+    /* Remarque obligatoire quand NOK */
     .remark-required{
       border-color:#ff4d4d !important;
       box-shadow:0 0 0 2px rgba(255,77,77,.25);
@@ -141,9 +141,9 @@ const pointsCheckin = [
   "Porte / fenêtres sécurisées"
 ];
 
+// ✅ "Dégâts visibles" SUPPRIMÉ
 const pointsCheckout = [
   "Propreté générale",
-  "Dégâts visibles",
   "Literie récupérée",
   "Serviettes récupérées",
   "Salle de bain OK",
@@ -197,21 +197,19 @@ function renderPoints(){
     elPoints.appendChild(div);
   });
 
-  // Click handlers
   elPoints.querySelectorAll(".status button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const i = btn.dataset.i;
+      const i = Number(btn.dataset.i);
       const v = btn.dataset.v;
       const badge = document.getElementById(`s_${i}`);
       badge.textContent = v;
       badge.dataset.status = v;
 
-      applyRemarkRule_(Number(i));
+      applyRemarkRule_(i);
       updateSendState();
     });
   });
 
-  // Input handlers
   elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
     inp.addEventListener("input", ()=>{
       const i = Number(inp.id.split("_")[1]);
@@ -220,7 +218,6 @@ function renderPoints(){
     });
   });
 
-  // Init rule state
   for (let i=0;i<list.length;i++) applyRemarkRule_(i);
   updateSendState();
 }
@@ -230,19 +227,15 @@ function applyRemarkRule_(i){
   const status = badge?.dataset.status || "";
   const input = document.getElementById(`r_${i}`);
   const label = document.getElementById(`rl_${i}`);
-
   if (!input || !label) return;
 
-  // Si NOK -> remarque obligatoire + rouge si vide
   if (status === "❌") {
     const hasText = input.value.trim().length > 0;
-
     label.classList.add("remark-label-required");
     label.textContent = hasText ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
     if (!hasText) input.classList.add("remark-required");
     else input.classList.remove("remark-required");
   } else {
-    // OK ou non choisi -> remarque optionnelle
     label.classList.remove("remark-label-required");
     label.textContent = "Remarque";
     input.classList.remove("remark-required");
@@ -268,7 +261,6 @@ elPhotos.addEventListener("change", async () => {
   }
 
   elPhotoInfo.textContent = "Compression des photos…";
-
   let totalOrig = 0;
   let totalComp = 0;
 
@@ -319,7 +311,6 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
       ctx.drawImage(img, 0, 0, w, h);
 
       const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
-
       URL.revokeObjectURL(url);
       resolve(dataUrl);
     };
@@ -342,7 +333,6 @@ function allPointsChecked(){
   }
   return true;
 }
-
 function allNokHaveRemark(){
   const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
   for (let i=0;i<list.length;i++){
@@ -354,13 +344,11 @@ function allNokHaveRemark(){
   }
   return true;
 }
-
 function updateSendState(){
   const chambreOk = elChambre.value.trim().length > 0;
   const agentOk = elAgent.value.trim().length > 0;
   const pointsOk = allPointsChecked();
   const nokRemarkOk = allNokHaveRemark();
-
   elSend.disabled = !(chambreOk && agentOk && pointsOk && nokRemarkOk);
 }
 
@@ -375,7 +363,6 @@ elSend.addEventListener("click", async () => {
   const agent = elAgent.value.trim();
   const date = document.getElementById("date").value;
 
-  // Sécurité (normalement déjà grisé)
   if(!chambre || !agent){
     elResult.innerHTML = `<div class="error">Chambre et Agent obligatoires</div>`;
     return;
@@ -392,9 +379,11 @@ elSend.addEventListener("click", async () => {
   const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
   const points = [];
   for(let i=0;i<list.length;i++){
-    const status = document.getElementById(`s_${i}`).dataset.status;
-    const remarque = document.getElementById(`r_${i}`).value.trim();
-    points.push({ label:list[i], status, remarque });
+    points.push({
+      label: list[i],
+      status: document.getElementById(`s_${i}`).dataset.status,
+      remarque: document.getElementById(`r_${i}`).value.trim()
+    });
   }
 
   elSend.disabled = true;
@@ -432,7 +421,6 @@ elSend.addEventListener("click", async () => {
     document.getElementById("type").value = "check-in";
     document.getElementById("date").value = nowLocal();
 
-    // reset points + photos
     renderPoints();
     elPhotos.value = "";
     photosBase64 = [];
@@ -442,7 +430,6 @@ elSend.addEventListener("click", async () => {
 
     elAgent.value = keepAgent;
     elChambre.focus();
-
     updateSendState();
 
   } catch(e){
