@@ -25,6 +25,28 @@ body{
 }
 h1{font-size:22px;margin:10px 0 4px}
 
+/* ===== HEADER (LOGO) ===== */
+.header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:10px 0 6px;
+}
+.logo{
+  width:58px;
+  height:58px;
+  border-radius:14px;
+  object-fit:contain;
+  background:#0c1430;
+  border:1px solid #223056;
+  padding:6px;
+  flex:0 0 auto;
+}
+.headerText{min-width:0;}
+.headerText h1{margin:0;font-size:22px;}
+.headerText .small{margin-top:3px;}
+
+/* ===== CARDS ===== */
 .card{
   background:#111a33;
   border:1px solid #223056;
@@ -70,9 +92,8 @@ textarea{min-height:90px}
   align-items:flex-start;
   justify-content:space-between;
   gap:10px;
-  flex-wrap:wrap; /* anti-débordement */
+  flex-wrap:wrap;
 }
-
 .pointTop b{
   flex:1 1 auto;
   min-width:0;
@@ -169,14 +190,22 @@ textarea{min-height:90px}
 }
 @media (max-width:360px){
   .status{grid-template-columns:1fr;}
+  .logo{width:52px;height:52px;}
 }
 </style>
 </head>
 
 <body>
 <div class="wrap">
-  <h1>Fiche Check-in / Check-Out</h1>
-  <div class="small">Hôtel : <b>Habitation des Lauriers</b></div>
+
+  <!-- ✅ Logo (à la racine) + Titre -->
+  <div class="header">
+    <img class="logo" src="LOGO_4_etoiles-removebg-preview.png" alt="Logo Hôtel">
+    <div class="headerText">
+      <h1>Fiche Check-in / Check-Out</h1>
+      <div class="small">Hôtel : <b>Habitation des Lauriers</b></div>
+    </div>
+  </div>
 
   <div class="card">
     <div class="row">
@@ -231,7 +260,6 @@ textarea{min-height:90px}
 
 <script>
 /* ================= CONFIG ================= */
-// ✅ IMPORTANT : Mets ton URL Apps Script /exec
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7ofKyewtV2CzdbZt3ia0Lf7WGsBt6DIz4mKJ_Nn2zpaHkxQYUkQg/exec";
 const PIN = "101210!";
 
@@ -483,7 +511,6 @@ function updateSendState(){
   const remarksOk = remarkRulesSatisfied();
   elSend.disabled = !(chambreOk && agentOk && pointsOk && remarksOk);
 }
-
 elChambre.addEventListener("input", updateSendState);
 elAgent.addEventListener("input", updateSendState);
 
@@ -491,18 +518,11 @@ elAgent.addEventListener("input", updateSendState);
 elSend.addEventListener("click", async () => {
   elResult.innerHTML = "";
 
-  if (!WEB_APP_URL || WEB_APP_URL === "TON_URL_APPS_SCRIPT") {
-    elResult.innerHTML = `<div class="error">❌ Mets ton URL Apps Script (/exec) dans WEB_APP_URL</div>`;
-    updateSendState();
-    return;
-  }
-
   if (!allPointsChecked()) {
     elResult.innerHTML = `<div class="error">❌ Tous les points doivent être cochés</div>`;
     updateSendState();
     return;
   }
-
   if (!remarkRulesSatisfied()) {
     elResult.innerHTML = `<div class="error">❌ Certaines remarques obligatoires manquent</div>`;
     updateSendState();
@@ -583,4 +603,3 @@ elSend.addEventListener("click", async () => {
 
 </body>
 </html>
-
