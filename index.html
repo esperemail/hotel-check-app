@@ -5,45 +5,171 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Fiche Check-in / Check-Out</title>
 <meta name="theme-color" content="#0b1220">
+
 <style>
+/* ===== BASE ===== */
 *{box-sizing:border-box;}
-body{margin:0;font-family:system-ui,Arial;background:#0b1220;color:#fff;padding-bottom:95px;overflow-x:hidden;}
-.wrap{max-width:820px;margin:0 auto;padding:16px;overflow-x:hidden;}
+body{
+  margin:0;
+  font-family:system-ui,Arial;
+  background:#0b1220;
+  color:#fff;
+  padding-bottom:95px;
+  overflow-x:hidden;
+}
+.wrap{
+  max-width:820px;
+  margin:0 auto;
+  padding:16px;
+  overflow-x:hidden;
+}
 h1{font-size:22px;margin:10px 0 4px}
-.card{background:#111a33;border:1px solid #223056;border-radius:14px;padding:14px;margin:12px 0}
-label{display:block;margin:10px 0 6px;font-weight:800}
-input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3a66;background:#0c1430;color:#fff}
+
+.card{
+  background:#111a33;
+  border:1px solid #223056;
+  border-radius:14px;
+  padding:14px;
+  margin:12px 0;
+}
+label{
+  display:block;
+  margin:10px 0 6px;
+  font-weight:800;
+}
+input,select,textarea{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #2a3a66;
+  background:#0c1430;
+  color:#fff;
+}
 textarea{min-height:90px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+/* ===== POINTS ===== */
 .gridPoints{display:grid;gap:10px}
-.point{max-width:100%;overflow:hidden;border:1px solid #2a3a66;border-radius:12px;padding:12px;background:#0c1430}
-.pointTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.pointTop b{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;word-break:break-word}
-.badge{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:#1f2a55;font-weight:900;white-space:nowrap}
 
-.status{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.status button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a3a66;font-weight:900;color:#fff}
+.point{
+  max-width:100%;
+  overflow:hidden;
+  border:1px solid #2a3a66;
+  border-radius:12px;
+  padding:12px;
+  background:#0c1430;
+}
+
+.pointTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap; /* anti-débordement */
+}
+
+.pointTop b{
+  flex:1 1 auto;
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.badge{
+  flex:0 0 auto;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#1f2a55;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.status{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+.status button{
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #2a3a66;
+  font-weight:900;
+  color:#fff;
+}
 .ok{background:#1d5c3a}
 .no{background:#7a2a2a}
 
 .small{font-size:.9rem;opacity:.9}
-.remark-required{border-color:#ff4d4d!important;box-shadow:0 0 0 2px rgba(255,77,77,.25);background:rgba(255,77,77,.08)!important;}
-.remark-label-required{color:#ff6b6b;font-weight:900;}
 
-.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.thumbs img{width:100%;border-radius:10px;border:1px solid #2a3a66;object-fit:cover;aspect-ratio:1/1}
+/* ===== REMARQUES ===== */
+.remark-required{
+  border-color:#ff4d4d !important;
+  box-shadow:0 0 0 2px rgba(255,77,77,.25);
+  background:rgba(255,77,77,.08)!important;
+}
+.remark-label-required{
+  color:#ff6b6b;
+  font-weight:900;
+}
 
-.floating-bar{position:fixed;bottom:0;left:0;right:0;background:#0b1220;border-top:1px solid #223056;padding:12px;z-index:999}
-.floating-btn{width:100%;padding:16px;border-radius:14px;border:none;background:#2563eb;color:#fff;font-size:18px;font-weight:900}
-.floating-btn:disabled{opacity:.45;filter:grayscale(1)}
+/* ===== PHOTOS ===== */
+.thumbs{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.thumbs img{
+  width:100%;
+  border-radius:10px;
+  border:1px solid #2a3a66;
+  object-fit:cover;
+  aspect-ratio:1/1;
+}
 
+/* ===== BAR FLOTTANTE ===== */
+.floating-bar{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:#0b1220;
+  border-top:1px solid #223056;
+  padding:12px;
+  z-index:999;
+}
+.floating-btn{
+  width:100%;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  font-size:18px;
+  font-weight:900;
+}
+.floating-btn:disabled{
+  opacity:.45;
+  filter:grayscale(1);
+}
+
+/* ===== FEEDBACK ===== */
 .error{color:#ff6b6b;font-weight:800;margin-top:8px}
 .success{color:#6bff9c;font-weight:800;margin-top:8px}
 .hint{opacity:.85;font-size:.95rem}
 
-@media (max-width:560px){.row{grid-template-columns:1fr;}}
-@media (max-width:360px){.status{grid-template-columns:1fr;}}
+/* ===== RESPONSIVE OPTION 2 ===== */
+@media (max-width:560px){
+  .row{grid-template-columns:1fr;}
+}
+@media (max-width:360px){
+  .status{grid-template-columns:1fr;}
+}
 </style>
 </head>
 
@@ -105,21 +231,25 @@ textarea{min-height:90px}
 
 <script>
 /* ================= CONFIG ================= */
-// ⚠️ Mets ici ton URL /exec
-const WEB_APP_URL = "TON_URL_APPS_SCRIPT";
+const WEB_APP_URL = "TON_URL_APPS_SCRIPT"; // ✅ mets ici ton /exec
 const PIN = "101210!";
 
+/* Compression */
 const COMPRESS_MAX_W = 1600;
 const COMPRESS_MAX_H = 1600;
 const COMPRESS_QUALITY = 0.72;
 const COMPRESS_MIME = "image/jpeg";
 
-// CHECK-OUT : remarque obligatoire si ✅, optionnelle si ❌
+/**
+ * ✅ CHECK-OUT points spéciaux :
+ * remarque obligatoire si ✅, optionnelle si ❌
+ */
 const YES_REMARK_REQUIRED_POINTS = new Set([
   "Objets manquants",
   "Effet(s) oublié(s) par le Client"
 ]);
 
+/* ================= POINTS ================= */
 const pointsCheckin = [
   "Propreté générale (sol / surfaces)",
   "Odeur agréable",
@@ -191,16 +321,19 @@ function renderPoints(){
         <b>${i+1}. ${label}</b>
         <span class="badge" id="s_${i}">❓</span>
       </div>
+
       <div class="status">
         <button class="ok" type="button" data-i="${i}" data-v="✅">✅ OK</button>
         <button class="no" type="button" data-i="${i}" data-v="❌">❌ NOK</button>
       </div>
+
       <label class="small" id="rl_${i}">Remarque</label>
       <input id="r_${i}" placeholder="Remarque">
     `;
     elPoints.appendChild(div);
   });
 
+  // Boutons OK/NOK
   elPoints.querySelectorAll(".status button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const i = Number(btn.dataset.i);
@@ -214,6 +347,7 @@ function renderPoints(){
     });
   });
 
+  // Inputs remarques
   elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
     inp.addEventListener("input", ()=>{
       const i = Number(inp.id.split("_")[1]);
@@ -226,6 +360,12 @@ function renderPoints(){
   updateSendState();
 }
 
+/**
+ * Règles remarque :
+ * - Général : ❌ => remarque obligatoire
+ * - CHECK-OUT exceptions :
+ *   - "Objets manquants" & "Effet(s) oublié(s)..." => ✅ => remarque obligatoire, ❌ => optionnelle
+ */
 function applyRemarkRule_(i){
   const list = currentPointsList();
   const labelPoint = list[i];
@@ -239,9 +379,11 @@ function applyRemarkRule_(i){
   const remarkText = input.value.trim();
   let required = false;
 
-  // exceptions en check-out
-  if (isYesRemarkRequiredPoint_(labelPoint)) required = (status === "✅");
-  else required = (status === "❌");
+  if (isYesRemarkRequiredPoint_(labelPoint)) {
+    required = (status === "✅");
+  } else {
+    required = (status === "❌");
+  }
 
   if (required) {
     const hasText = remarkText.length > 0;
@@ -259,7 +401,7 @@ function applyRemarkRule_(i){
 elType.addEventListener("change", renderPoints);
 renderPoints();
 
-/* ================= PHOTOS + COMPRESSION ================= */
+/* ================= MULTI PHOTOS (compressées) ================= */
 let photosBase64 = [];
 
 elPhotos.addEventListener("change", async () => {
@@ -275,9 +417,16 @@ elPhotos.addEventListener("change", async () => {
   }
 
   elPhotoInfo.textContent = "Compression des photos…";
+  let totalOrig = 0;
+  let totalComp = 0;
+
   for(const f of files){
+    totalOrig += f.size;
     const compressed = await compressImageFileToDataURL(f, COMPRESS_MAX_W, COMPRESS_MAX_H, COMPRESS_QUALITY);
     photosBase64.push(compressed);
+
+    const approxBytes = Math.round((compressed.length * 3) / 4);
+    totalComp += approxBytes;
 
     const img = document.createElement("img");
     img.src = compressed;
@@ -285,9 +434,19 @@ elPhotos.addEventListener("change", async () => {
   }
 
   elThumbs.style.display = "grid";
-  elPhotoInfo.textContent = `Photos prêtes: ${files.length}`;
+  elPhotoInfo.textContent =
+    `Photos: ${files.length} | Taille approx avant: ${formatBytes(totalOrig)} | après: ${formatBytes(totalComp)}.`;
+
   updateSendState();
 });
+
+function formatBytes(bytes){
+  if(bytes < 1024) return bytes + " B";
+  const kb = bytes / 1024;
+  if(kb < 1024) return kb.toFixed(1) + " KB";
+  const mb = kb / 1024;
+  return mb.toFixed(2) + " MB";
+}
 
 function compressImageFileToDataURL(file, maxW, maxH, quality){
   return new Promise((resolve, reject)=>{
@@ -303,7 +462,8 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
 
       const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
       URL.revokeObjectURL(url);
@@ -319,7 +479,7 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
   });
 }
 
-/* ================= VALIDATION ================= */
+/* ================= VALIDATION (bouton grisé) ================= */
 function allPointsChecked(){
   const list = currentPointsList();
   for(let i=0;i<list.length;i++){
@@ -340,6 +500,7 @@ function remarkRulesSatisfied(){
       if (status === "✅" && !remark) return false;
       continue;
     }
+
     if (status === "❌" && !remark) return false;
   }
   return true;
@@ -360,19 +521,20 @@ elAgent.addEventListener("input", updateSendState);
 elSend.addEventListener("click", async () => {
   elResult.innerHTML = "";
 
-  if (!WEB_APP_URL || WEB_APP_URL === "TON_URL_APPS_SCRIPT") {
-    elResult.innerHTML = `<div class="error">❌ Remplace WEB_APP_URL par ton URL /exec</div>`;
-    updateSendState();
-    return;
-  }
-
   const chambre = elChambre.value.trim();
   const agent = elAgent.value.trim();
   const date = document.getElementById("date").value;
 
   if(!chambre || !agent){
     elResult.innerHTML = `<div class="error">Chambre et Nom Employé obligatoires</div>`;
-    updateSendState();
+    return;
+  }
+  if(!allPointsChecked()){
+    elResult.innerHTML = `<div class="error">Tous les points doivent être cochés</div>`;
+    return;
+  }
+  if(!remarkRulesSatisfied()){
+    elResult.innerHTML = `<div class="error">Certaines remarques obligatoires manquent</div>`;
     return;
   }
 
@@ -407,21 +569,18 @@ elSend.addEventListener("click", async () => {
       body: JSON.stringify(payload)
     });
 
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); }
-    catch { throw new Error("Réponse serveur invalide (pas du JSON). " + text.slice(0,60)); }
-
+    const json = await res.json();
     if(!json.ok) throw new Error(json.error || "Erreur inconnue");
 
     elResult.innerHTML = `<div class="success">✅ Envoyé (${json.photoCount || 0} photo(s))</div>`;
 
-    // Reset : garde Nom Employé
+    // Reset : garde agent
     const keepAgent = agent;
     elChambre.value = "";
     document.getElementById("notes").value = "";
     document.getElementById("type").value = "check-in";
     document.getElementById("date").value = nowLocal();
+
     renderPoints();
 
     elPhotos.value = "";
