@@ -5,270 +5,325 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Fiche Check-in / Check-Out</title>
   <meta name="theme-color" content="#0b1220">
+
   <style>
-    body{font-family:system-ui,Arial;margin:0;background:#0b1220;color:#fff}
+    body{
+      font-family:system-ui,Arial;
+      margin:0;
+      background:#0b1220;
+      color:#fff;
+      padding-bottom:90px; /* espace pour bouton flottant */
+    }
     .wrap{max-width:820px;margin:0 auto;padding:16px}
     h1{font-size:22px;margin:10px 0 2px}
-    .card{background:#111a33;border:1px solid #223056;border-radius:14px;padding:14px;margin:12px 0}
+
+    .card{
+      background:#111a33;
+      border:1px solid #223056;
+      border-radius:14px;
+      padding:14px;
+      margin:12px 0
+    }
+
     label{display:block;margin:10px 0 6px;font-weight:800}
-    input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3a66;background:#0c1430;color:#fff}
+    input,select,textarea{
+      width:100%;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid #2a3a66;
+      background:#0c1430;
+      color:#fff
+    }
     textarea{min-height:90px}
+
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .btn{padding:12px 14px;border-radius:12px;border:1px solid #2a3a66;background:#1a2a55;color:#fff;font-weight:900}
-    .btn:active{transform:scale(.99)}
-    .muted{opacity:.85;font-size:.95rem}
+
     .gridPoints{display:grid;gap:10px}
-    .point{border:1px solid #2a3a66;border-radius:12px;padding:12px;background:#0c1430}
-    .pointTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
+
+    .point{
+      border:1px solid #2a3a66;
+      border-radius:12px;
+      padding:12px;
+      background:#0c1430
+    }
+
+    .pointTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px
+    }
+
+    .badge{
+      padding:6px 10px;
+      border-radius:999px;
+      background:#1f2a55;
+      font-weight:800
+    }
+
+    .status{
+      display:flex;
+      gap:10px;
+      margin-top:10px
+    }
+    .status button{
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #2a3a66;
+      font-weight:900;
+      color:#fff
+    }
+    .ok{background:#1d5c3a}
+    .no{background:#7a2a2a}
+
     .small{font-size:.9rem;opacity:.9}
-    .status{display:flex;gap:10px;align-items:center;margin-top:10px}
-    .status button{flex:1}
-    .ok{background:#154c2f}
-    .no{background:#5a1e1e}
-    img.preview{width:100%;border-radius:12px;margin-top:10px;border:1px solid #2a3a66}
-    .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#0c1430;border:1px solid #2a3a66}
+
+    img.preview{
+      width:100%;
+      border-radius:12px;
+      margin-top:10px;
+      border:1px solid #2a3a66
+    }
+
+    /* 🔘 BOUTON FLOTTANT */
+    .floating-bar{
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      background:#0b1220;
+      border-top:1px solid #223056;
+      padding:12px;
+      z-index:999
+    }
+
+    .floating-btn{
+      width:100%;
+      padding:16px;
+      border-radius:14px;
+      border:none;
+      background:#2563eb;
+      color:#fff;
+      font-size:18px;
+      font-weight:900
+    }
+
+    .floating-btn:active{transform:scale(.98)}
+
+    .error{
+      color:#ff6b6b;
+      font-weight:700;
+      margin-top:8px
+    }
+
+    .success{
+      color:#6bff9c;
+      font-weight:700;
+      margin-top:8px
+    }
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>Fiche Check-in / Check-Out</h1>
-    <div class="muted">
-      Hôtel: <span class="badge" id="hotelName"></span>
-    </div>
+<div class="wrap">
 
-    <div class="card">
-      <div class="row">
-        <div>
-          <label>Type</label>
-          <select id="type">
-            <option value="check-in">Check-in</option>
-            <option value="check-out">Check-out</option>
-          </select>
-        </div>
-        <div>
-          <label>Date</label>
-          <input id="date" type="datetime-local">
-        </div>
+  <h1>Fiche Check-in / Check-Out</h1>
+  <div class="small">Hôtel : <b>Habitation des Lauriers</b></div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Type</label>
+        <select id="type">
+          <option value="check-in">Check-in</option>
+          <option value="check-out">Check-out</option>
+        </select>
       </div>
-
-      <div class="row">
-        <div>
-          <label>Chambre</label>
-          <input id="chambre" inputmode="numeric" placeholder="Ex: 203">
-        </div>
-        <div>
-          <label>Agent</label>
-          <input id="agent" placeholder="Nom de l’agent">
-        </div>
+      <div>
+        <label>Date</label>
+        <input id="date" type="datetime-local">
       </div>
     </div>
 
-    <div class="card">
-      <h3 style="margin:0 0 8px">Point de vérification</h3>
-      <div id="points" class="gridPoints"></div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px">Photo / preuve (optionnel)</h3>
-      <div class="muted">Prends une photo ou choisis dans la galerie (envoyée au Drive admin).</div>
-      <input id="photo" type="file" accept="image/*" capture="environment">
-      <img id="preview" class="preview" style="display:none" alt="Aperçu">
-    </div>
-
-    <div class="card">
-      <label>Observations générales</label>
-      <textarea id="notes" placeholder="Détails importants…"></textarea>
-
-      <button class="btn" id="send">Envoyer</button>
-      <div id="result" class="muted" style="margin-top:10px"></div>
+    <div class="row">
+      <div>
+        <label>Chambre</label>
+        <input id="chambre" placeholder="Ex : 203">
+      </div>
+      <div>
+        <label>Agent</label>
+        <input id="agent" placeholder="Nom de l’agent">
+      </div>
     </div>
   </div>
 
+  <div class="card">
+    <h3>Point de vérification</h3>
+    <div id="points" class="gridPoints"></div>
+  </div>
+
+  <div class="card">
+    <h3>Photo / preuve (optionnel)</h3>
+    <input id="photo" type="file" accept="image/*" capture="environment">
+    <img id="preview" class="preview" style="display:none">
+  </div>
+
+  <div class="card">
+    <label>Observations générales</label>
+    <textarea id="notes"></textarea>
+    <div id="result"></div>
+  </div>
+</div>
+
+<!-- 🔘 BARRE FLOTTANTE -->
+<div class="floating-bar">
+  <button class="floating-btn" id="send">Envoyer</button>
+</div>
+
 <script>
-  // Web App URL
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7ofKyewtV2CzdbZt3ia0Lf7WGsBt6DIz4mKJ_Nn2zpaHkxQYUkQg/exec";
+/* ================= CONFIG ================= */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgIouojiJxfn91CX7ofKyewtV2CzdbZt3ia0Lf7WGsBt6DIz4mKJ_Nn2zpaHkxQYUkQg/exec";
+const PIN = "101210!";
+const HOTEL_NAME = "Habitation des Lauriers";
 
-  // PIN simple (pas mot de passe Google)
-  const PIN = "101210!";
+/* ================= POINTS ================= */
+const pointsCheckin = [
+  "Propreté générale (sol / surfaces)",
+  "Odeur agréable",
+  "Literie propre + lit fait",
+  "Serviettes + papier toilette",
+  "Salle de bain propre",
+  "Eau chaude",
+  "Climatiseur + Télécommande",
+  "Réfrigérateur",
+  "TV + Décodeur + Télécommande",
+  "Lumières + prises",
+  "Lampe de chevet",
+  "Ventilateurs sur pied",
+  "Meubles en bon état",
+  "Porte / fenêtres sécurisées"
+];
 
-  // Hôtel auto
-  const HOTEL_NAME = "Habitation des Lauriers";
-  document.getElementById("hotelName").textContent = HOTEL_NAME;
+const pointsCheckout = [
+  "Propreté générale",
+  "Dégâts visibles",
+  "Literie récupérée",
+  "Serviettes récupérées",
+  "Salle de bain OK",
+  "Climatiseur + Télécommande",
+  "Réfrigérateur",
+  "TV + Décodeur + Télécommande",
+  "Lumières + prises",
+  "Lampe de chevet",
+  "Ventilateurs sur pied",
+  "Meubles en bon état",
+  "Objets manquants"
+];
 
-  // ✅ LISTES MODIFIÉES
-  const pointsCheckin = [
-    "Propreté générale (sol / surfaces)",
-    "Odeur agréable (pas d’humidité)",
-    "Literie propre + lit fait",
-    "Serviettes + papier toilette présents",
-    "Douche / lavabo / WC propres",
-    "Eau chaude OK",
-    "Climatiseur + Télécommande",
-    "Réfrigérateur OK",
-    "TV + Décodeur + Télécommande",
-    "Lumières + prises OK",
-    "Lampe de chevet OK",
-    "Ventilateurs sur pied OK",
-    "Meubles en bon état",
-    "Porte / serrure + fenêtres sécurisées"
-  ];
+/* ================= LOGIQUE ================= */
+const elType = document.getElementById("type");
+const elPoints = document.getElementById("points");
+const elResult = document.getElementById("result");
 
-  const pointsCheckout = [
-    "Propreté générale (pas de déchets)",
-    "Dégâts visibles (murs / sol / vitres)",
-    "Literie / linge récupérés",
-    "Serviettes récupérées",
-    "Salle de bain (aucune casse / fuite)",
-    "Climatiseur + Télécommande OK",
-    "Réfrigérateur OK",
-    "TV + Décodeur + Télécommande présents",
-    "Lumières + prises OK",
-    "Lampe de chevet OK",
-    "Ventilateurs sur pied OK",
-    "Meubles en bon état",
-    "Objets manquants ? (si oui noter)"
-  ];
+function nowLocal(){
+  const d=new Date();
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+document.getElementById("date").value = nowLocal();
 
-  const elType = document.getElementById('type');
-  const elPoints = document.getElementById('points');
-  const elDate = document.getElementById('date');
-  const elPhoto = document.getElementById('photo');
-  const elPreview = document.getElementById('preview');
-  const elResult = document.getElementById('result');
-
-  function nowLocal() {
-    const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0,16);
-  }
-  elDate.value = nowLocal();
-
-  function renderPoints() {
-    const list = elType.value === "check-in" ? pointsCheckin : pointsCheckout;
-    elPoints.innerHTML = "";
-    list.forEach((label, idx) => {
-      const div = document.createElement('div');
-      div.className = "point";
-      div.innerHTML = `
-        <div class="pointTop">
-          <div><b>${idx+1}. ${label}</b></div>
-          <div class="badge" id="s_${idx}">—</div>
-        </div>
-        <div class="status">
-          <button class="btn ok" data-idx="${idx}" data-val="✅">✅ OK</button>
-          <button class="btn no" data-idx="${idx}" data-val="❌">❌ NOK</button>
-        </div>
-        <label class="small">Remarque (optionnel)</label>
-        <input id="r_${idx}" placeholder="Ex: ampoule grillée, fuite, etc.">
-      `;
-      elPoints.appendChild(div);
-    });
-
-    elPoints.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const i = btn.dataset.idx;
-        const v = btn.dataset.val;
-        const statusEl = document.getElementById(`s_${i}`);
-        statusEl.textContent = v;
-        statusEl.dataset.status = v;
-      });
-    });
-  }
-
-  elType.addEventListener('change', renderPoints);
-  renderPoints();
-
-  // Photo base64
-  let photoBase64 = "";
-  elPhoto.addEventListener('change', async () => {
-    const f = elPhoto.files?.[0];
-    if (!f) return;
-    const b64 = await fileToDataURL(f);
-    photoBase64 = b64;
-    elPreview.src = b64;
-    elPreview.style.display = "block";
+function renderPoints(){
+  const list = elType.value==="check-in" ? pointsCheckin : pointsCheckout;
+  elPoints.innerHTML="";
+  list.forEach((label,i)=>{
+    const div=document.createElement("div");
+    div.className="point";
+    div.innerHTML=`
+      <div class="pointTop">
+        <b>${i+1}. ${label}</b>
+        <span class="badge" id="s_${i}">❓</span>
+      </div>
+      <div class="status">
+        <button class="ok" onclick="setStatus(${i},'✅')">✅ OK</button>
+        <button class="no" onclick="setStatus(${i},'❌')">❌ NOK</button>
+      </div>
+      <label class="small">Remarque</label>
+      <input id="r_${i}">
+    `;
+    elPoints.appendChild(div);
   });
+}
+window.setStatus=(i,v)=>{
+  const b=document.getElementById(`s_${i}`);
+  b.textContent=v;
+  b.dataset.status=v;
+};
 
-  function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
+elType.addEventListener("change",renderPoints);
+renderPoints();
+
+/* ================= ENVOI ================= */
+document.getElementById("send").onclick=async()=>{
+  elResult.innerHTML="";
+  const chambre=document.getElementById("chambre").value.trim();
+  const agent=document.getElementById("agent").value.trim();
+
+  if(!chambre||!agent){
+    elResult.innerHTML=`<div class="error">Chambre et Agent obligatoires</div>`;
+    return;
   }
 
-  document.getElementById('send').addEventListener('click', async () => {
-    elResult.textContent = "Envoi…";
+  const list=elType.value==="check-in"?pointsCheckin:pointsCheckout;
+  const points=[];
 
-    const chambre = document.getElementById('chambre').value.trim();
-    const agent = document.getElementById('agent').value.trim();
-    const date = document.getElementById('date').value;
-
-    if (!chambre || !agent) {
-      elResult.textContent = "⚠️ Remplis Chambre et Agent.";
+  for(let i=0;i<list.length;i++){
+    const status=document.getElementById(`s_${i}`).dataset.status;
+    if(!status){
+      elResult.innerHTML=`<div class="error">❌ Point ${i+1} non vérifié</div>`;
       return;
     }
-
-    const list = elType.value === "check-in" ? pointsCheckin : pointsCheckout;
-    const points = list.map((label, idx) => {
-      const statusEl = document.getElementById(`s_${idx}`);
-      const status = statusEl.dataset.status || "";
-      const remarque = (document.getElementById(`r_${idx}`).value || "").trim();
-      return { label, status, remarque };
+    points.push({
+      label:list[i],
+      status,
+      remarque:document.getElementById(`r_${i}`).value.trim()
     });
+  }
 
-    const payload = {
-      pin: PIN,
-      type: elType.value,
-      hotel: HOTEL_NAME,
-      chambre,
-      agent,
-      date,
-      points,
-      notes: (document.getElementById('notes').value || "").trim(),
-      photoBase64
-    };
+  const payload={
+    pin:PIN,
+    type:elType.value,
+    hotel:HOTEL_NAME,
+    chambre,
+    agent,
+    date:document.getElementById("date").value,
+    points,
+    notes:document.getElementById("notes").value,
+    photoBase64:""
+  };
 
-    try {
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
+  try{
+    const res=await fetch(WEB_APP_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload)
+    });
+    const json=await res.json();
+    if(!json.ok) throw new Error(json.error);
 
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || "Erreur inconnue");
+    elResult.innerHTML=`<div class="success">✅ Envoyé avec succès</div>`;
 
-      elResult.textContent = `✅ Envoyé. ${json.photoUrl ? "Photo OK." : "Sans photo."}`;
+    // RESET (garder agent)
+    document.getElementById("chambre").value="";
+    document.getElementById("notes").value="";
+    document.getElementById("date").value=nowLocal();
+    renderPoints();
+    document.getElementById("chambre").focus();
 
-      // ✅ Reset formulaire (garder agent)
-      const keepAgent = document.getElementById('agent').value.trim();
-
-      document.getElementById('chambre').value = "";
-      document.getElementById('notes').value = "";
-      document.getElementById('type').value = "check-in";
-      document.getElementById('date').value = nowLocal();
-
-      // reset photo
-      document.getElementById('photo').value = "";
-      photoBase64 = "";
-      elPreview.style.display = "none";
-      elPreview.src = "";
-
-      // reset points UI
-      renderPoints();
-
-      // garder agent
-      document.getElementById('agent').value = keepAgent;
-
-      // focus chambre
-      document.getElementById('chambre').focus();
-
-    } catch (err) {
-      elResult.textContent = `❌ Échec: ${err.message}`;
-    }
-  });
+  }catch(e){
+    elResult.innerHTML=`<div class="error">❌ ${e.message}</div>`;
+  }
+};
 </script>
 </body>
 </html>
