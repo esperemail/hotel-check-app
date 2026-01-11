@@ -231,7 +231,8 @@ textarea{min-height:90px}
 
 <script>
 /* ================= CONFIG ================= */
-const WEB_APP_URL = "TON_URL_APPS_SCRIPT"; // ✅ mets ici ton /exec
+// ✅ IMPORTANT : Mets ton URL Apps Script /exec
+const WEB_APP_URL = "TON_URL_APPS_SCRIPT";
 const PIN = "101210!";
 
 /* Compression */
@@ -241,8 +242,7 @@ const COMPRESS_QUALITY = 0.72;
 const COMPRESS_MIME = "image/jpeg";
 
 /**
- * ✅ CHECK-OUT points spéciaux :
- * remarque obligatoire si ✅, optionnelle si ❌
+ * CHECK-OUT : remarque obligatoire si ✅, optionnelle si ❌
  */
 const YES_REMARK_REQUIRED_POINTS = new Set([
   "Objets manquants",
@@ -295,8 +295,8 @@ const elThumbs = document.getElementById("thumbs");
 const elPhotoInfo = document.getElementById("photoInfo");
 
 function nowLocal(){
-  const d=new Date();
-  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,16);
 }
 document.getElementById("date").value = nowLocal();
@@ -308,12 +308,12 @@ function isYesRemarkRequiredPoint_(label){
   return (elType.value === "check-out") && YES_REMARK_REQUIRED_POINTS.has(label);
 }
 
-/* ================= RENDER POINTS ================= */
+/* ================= RENDER ================= */
 function renderPoints(){
   const list = currentPointsList();
   elPoints.innerHTML = "";
 
-  list.forEach((label,i)=>{
+  list.forEach((label, i) => {
     const div = document.createElement("div");
     div.className = "point";
     div.innerHTML = `
@@ -333,9 +333,8 @@ function renderPoints(){
     elPoints.appendChild(div);
   });
 
-  // Boutons OK/NOK
-  elPoints.querySelectorAll(".status button").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
+  elPoints.querySelectorAll(".status button").forEach(btn => {
+    btn.addEventListener("click", () => {
       const i = Number(btn.dataset.i);
       const v = btn.dataset.v;
       const badge = document.getElementById(`s_${i}`);
@@ -347,9 +346,8 @@ function renderPoints(){
     });
   });
 
-  // Inputs remarques
-  elPoints.querySelectorAll("input[id^='r_']").forEach(inp=>{
-    inp.addEventListener("input", ()=>{
+  elPoints.querySelectorAll("input[id^='r_']").forEach(inp => {
+    inp.addEventListener("input", () => {
       const i = Number(inp.id.split("_")[1]);
       applyRemarkRule_(i);
       updateSendState();
@@ -360,12 +358,6 @@ function renderPoints(){
   updateSendState();
 }
 
-/**
- * Règles remarque :
- * - Général : ❌ => remarque obligatoire
- * - CHECK-OUT exceptions :
- *   - "Objets manquants" & "Effet(s) oublié(s)..." => ✅ => remarque obligatoire, ❌ => optionnelle
- */
 function applyRemarkRule_(i){
   const list = currentPointsList();
   const labelPoint = list[i];
@@ -379,17 +371,14 @@ function applyRemarkRule_(i){
   const remarkText = input.value.trim();
   let required = false;
 
-  if (isYesRemarkRequiredPoint_(labelPoint)) {
-    required = (status === "✅");
-  } else {
-    required = (status === "❌");
-  }
+  if (isYesRemarkRequiredPoint_(labelPoint)) required = (status === "✅");
+  else required = (status === "❌");
 
   if (required) {
-    const hasText = remarkText.length > 0;
+    const ok = remarkText.length > 0;
     label.classList.add("remark-label-required");
-    label.textContent = hasText ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
-    if (!hasText) input.classList.add("remark-required");
+    label.textContent = ok ? "Remarque (obligatoire ✅)" : "Remarque (obligatoire)";
+    if (!ok) input.classList.add("remark-required");
     else input.classList.remove("remark-required");
   } else {
     label.classList.remove("remark-label-required");
@@ -401,7 +390,7 @@ function applyRemarkRule_(i){
 elType.addEventListener("change", renderPoints);
 renderPoints();
 
-/* ================= MULTI PHOTOS (compressées) ================= */
+/* ================= PHOTOS + COMPRESSION ================= */
 let photosBase64 = [];
 
 elPhotos.addEventListener("change", async () => {
@@ -417,16 +406,9 @@ elPhotos.addEventListener("change", async () => {
   }
 
   elPhotoInfo.textContent = "Compression des photos…";
-  let totalOrig = 0;
-  let totalComp = 0;
-
-  for(const f of files){
-    totalOrig += f.size;
+  for (const f of files) {
     const compressed = await compressImageFileToDataURL(f, COMPRESS_MAX_W, COMPRESS_MAX_H, COMPRESS_QUALITY);
     photosBase64.push(compressed);
-
-    const approxBytes = Math.round((compressed.length * 3) / 4);
-    totalComp += approxBytes;
 
     const img = document.createElement("img");
     img.src = compressed;
@@ -434,19 +416,9 @@ elPhotos.addEventListener("change", async () => {
   }
 
   elThumbs.style.display = "grid";
-  elPhotoInfo.textContent =
-    `Photos: ${files.length} | Taille approx avant: ${formatBytes(totalOrig)} | après: ${formatBytes(totalComp)}.`;
-
+  elPhotoInfo.textContent = `Photos prêtes: ${files.length}`;
   updateSendState();
 });
-
-function formatBytes(bytes){
-  if(bytes < 1024) return bytes + " B";
-  const kb = bytes / 1024;
-  if(kb < 1024) return kb.toFixed(1) + " KB";
-  const mb = kb / 1024;
-  return mb.toFixed(2) + " MB";
-}
 
 function compressImageFileToDataURL(file, maxW, maxH, quality){
   return new Promise((resolve, reject)=>{
@@ -462,8 +434,7 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
 
       const dataUrl = canvas.toDataURL(COMPRESS_MIME, quality);
       URL.revokeObjectURL(url);
@@ -483,8 +454,8 @@ function compressImageFileToDataURL(file, maxW, maxH, quality){
 function allPointsChecked(){
   const list = currentPointsList();
   for(let i=0;i<list.length;i++){
-    const status = document.getElementById(`s_${i}`)?.dataset.status;
-    if(!status) return false;
+    const s = document.getElementById(`s_${i}`)?.dataset.status;
+    if(!s) return false;
   }
   return true;
 }
@@ -500,7 +471,6 @@ function remarkRulesSatisfied(){
       if (status === "✅" && !remark) return false;
       continue;
     }
-
     if (status === "❌" && !remark) return false;
   }
   return true;
@@ -521,22 +491,27 @@ elAgent.addEventListener("input", updateSendState);
 elSend.addEventListener("click", async () => {
   elResult.innerHTML = "";
 
+  if (!WEB_APP_URL || WEB_APP_URL === "TON_URL_APPS_SCRIPT") {
+    elResult.innerHTML = `<div class="error">❌ Mets ton URL Apps Script (/exec) dans WEB_APP_URL</div>`;
+    updateSendState();
+    return;
+  }
+
+  if (!allPointsChecked()) {
+    elResult.innerHTML = `<div class="error">❌ Tous les points doivent être cochés</div>`;
+    updateSendState();
+    return;
+  }
+
+  if (!remarkRulesSatisfied()) {
+    elResult.innerHTML = `<div class="error">❌ Certaines remarques obligatoires manquent</div>`;
+    updateSendState();
+    return;
+  }
+
   const chambre = elChambre.value.trim();
   const agent = elAgent.value.trim();
   const date = document.getElementById("date").value;
-
-  if(!chambre || !agent){
-    elResult.innerHTML = `<div class="error">Chambre et Nom Employé obligatoires</div>`;
-    return;
-  }
-  if(!allPointsChecked()){
-    elResult.innerHTML = `<div class="error">Tous les points doivent être cochés</div>`;
-    return;
-  }
-  if(!remarkRulesSatisfied()){
-    elResult.innerHTML = `<div class="error">Certaines remarques obligatoires manquent</div>`;
-    return;
-  }
 
   const list = currentPointsList();
   const points = [];
@@ -547,9 +522,6 @@ elSend.addEventListener("click", async () => {
       remarque: document.getElementById(`r_${i}`).value.trim()
     });
   }
-
-  elSend.disabled = true;
-  elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
 
   const payload = {
     pin: PIN,
@@ -562,19 +534,28 @@ elSend.addEventListener("click", async () => {
     photosBase64
   };
 
-  try{
+  elSend.disabled = true;
+  elResult.innerHTML = `<div class="hint">Envoi en cours…</div>`;
+
+  try {
     const res = await fetch(WEB_APP_URL, {
       method: "POST",
       headers: {"Content-Type":"text/plain;charset=utf-8"},
       body: JSON.stringify(payload)
     });
 
-    const json = await res.json();
+    const raw = await res.text();
+    let json;
+    try { json = JSON.parse(raw); }
+    catch {
+      throw new Error("Réponse serveur non-JSON (HTML). Vérifie URL /exec & Déploiement. Début: " + raw.slice(0,120));
+    }
+
     if(!json.ok) throw new Error(json.error || "Erreur inconnue");
 
     elResult.innerHTML = `<div class="success">✅ Envoyé (${json.photoCount || 0} photo(s))</div>`;
 
-    // Reset : garde agent
+    // Reset : garde Nom Employé, vide chambre
     const keepAgent = agent;
     elChambre.value = "";
     document.getElementById("notes").value = "";
@@ -593,11 +574,12 @@ elSend.addEventListener("click", async () => {
     elChambre.focus();
     updateSendState();
 
-  } catch(e){
+  } catch (e) {
     elResult.innerHTML = `<div class="error">❌ ${e.message}</div>`;
     updateSendState();
   }
 });
 </script>
+
 </body>
 </html>
